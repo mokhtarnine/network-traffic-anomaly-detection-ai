@@ -65,12 +65,40 @@ def main():
     print(attack_counts.head(10))
 
     print_section("EDA Summary")
-    print("Train and test datasets loaded successfully.")
-    print("The dataset contains both normal and attack traffic.")
-    print("The label column contains multiple attack types.")
-    print("A binary_label column was created: normal vs attack.")
-    print("Categorical columns need encoding before model training.")
-    print("Numerical columns may need scaling before some models.")
+
+    train_missing_total = train_df.isnull().sum().sum()
+    test_missing_total = test_df.isnull().sum().sum()
+    train_duplicates = train_df.duplicated().sum()
+    test_duplicates = test_df.duplicated().sum()
+    label_count = train_df["label"].nunique()
+    binary_counts = train_df["binary_label"].value_counts()
+
+    if train_missing_total == 0 and test_missing_total == 0:
+        print("No missing values were found in the train or test datasets.")
+    else:
+        print(f"Train missing values: {train_missing_total}")
+        print(f"Test missing values: {test_missing_total}")
+
+    if train_duplicates == 0 and test_duplicates == 0:
+        print("No duplicate rows were found in the train or test datasets.")
+    else:
+        print(f"Train duplicate rows: {train_duplicates}")
+        print(f"Test duplicate rows: {test_duplicates}")
+
+    if "normal" in binary_counts.index and "attack" in binary_counts.index:
+        print("The training dataset contains both normal and attack traffic.")
+    else:
+        print("Warning: the training dataset does not contain both normal and attack traffic.")
+
+    if label_count > 2:
+        print(f"The label column contains {label_count} classes: normal plus multiple attack types.")
+    else:
+        print(f"The label column contains {label_count} classes.")
+
+    print("The binary_label column was created only for EDA/evaluation, not for clustering training.")
+    print("Categorical features must be encoded before clustering.")
+    print("Numerical features must be scaled because clustering algorithms are distance-based.")
+    print("The difficulty column is metadata and should be removed before clustering.")
 
 
 if __name__ == "__main__":
