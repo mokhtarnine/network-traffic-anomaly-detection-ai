@@ -1,18 +1,27 @@
 import pandas as pd
-from pathlib import Path
+from pathlib import Path 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_PATH = BASE_DIR / "data" / "raw" / "KDDTrain+.txt"
+
+TRAIN_PATH = BASE_DIR / "data" / "raw" / "KDDTrain+.txt"
+TEST_PATH = BASE_DIR / "data" / "raw" / "KDDTest+.txt"
 
 def load_nsl_kdd():
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Dataset not found: {DATA_PATH}")
+    if not TRAIN_PATH.exists():
+        raise FileNotFoundError(f"Training dataset not found: {TRAIN_PATH}")
+    
+    if not TEST_PATH.exists():
+        raise FileNotFoundError(f"Testing dataset not found: {TEST_PATH}")
+    
+    train_df = pd.read_csv(TRAIN_PATH, header=None)
+    test_df = pd.read_csv(TEST_PATH, header=None)
 
-    df = pd.read_csv(DATA_PATH, header=None)
-    return df
+    return train_df, test_df
 
 if __name__ == "__main__":
-    df = load_nsl_kdd()
-    print("Dataset loaded successfully")
-    print("Shape:", df.shape)
-    print(df.head())
+    train_df , test_df = load_nsl_kdd()
+
+    print("Datasets loaded successfully")
+    print("Train shape:", train_df.shape)
+    print("Test shape:", test_df.shape)
+    print(train_df.head())
