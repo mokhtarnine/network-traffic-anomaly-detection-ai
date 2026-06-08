@@ -5,7 +5,7 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score, adjusted_ran
 #convert all attacks into one category
 def create_binary_labels(labels):
     return labels.apply(
-        lambda label:"noraml" if str(label).strip().lower() == "noraml" else "attack"
+        lambda label: "normal" if str(label).strip().lower() == "normal" else "attack"
     )
 
 def evaluate_clustering(X_processed, clusters, true_labels):
