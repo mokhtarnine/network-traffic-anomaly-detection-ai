@@ -21,9 +21,14 @@ def init_db() -> None:
                 anomaly_ratio REAL,
                 silhouette_score REAL,
                 davies_bouldin_score REAL,
+                adjusted_rand_index REAL,
                 params_json TEXT
             )
         """)
+        # Migrate databases created before adjusted_rand_index was added
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(analyses)")}
+        if "adjusted_rand_index" not in existing:
+            conn.execute("ALTER TABLE analyses ADD COLUMN adjusted_rand_index REAL")
 
 
 def save_analysis(
@@ -38,8 +43,9 @@ def save_analysis(
         cur = conn.execute(
             """INSERT INTO analyses
                (timestamp, filename, algorithm, n_records, n_anomalies,
-                anomaly_ratio, silhouette_score, davies_bouldin_score, params_json)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                anomaly_ratio, silhouette_score, davies_bouldin_score,
+                adjusted_rand_index, params_json)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now().isoformat(timespec="seconds"),
                 filename,
@@ -49,6 +55,7 @@ def save_analysis(
                 round(n_anomalies / n_records, 4) if n_records else 0.0,
                 metrics.get("silhouette_score"),
                 metrics.get("davies_bouldin_score"),
+                metrics.get("adjusted_rand_index"),
                 json.dumps(params),
             ),
         )

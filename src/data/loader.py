@@ -22,8 +22,13 @@ def load_from_upload(uploaded_file) -> pd.DataFrame:
 
     if ext == "csv":
         return pd.read_csv(uploaded_file)
-    elif ext in ("xlsx", "xls"):
+    elif ext == "xlsx":
         return pd.read_excel(uploaded_file, engine="openpyxl")
+    elif ext == "xls":
+        try:
+            return pd.read_excel(uploaded_file)
+        except ImportError:
+            raise ValueError("Reading .xls files requires xlrd: pip install xlrd")
     elif ext == "txt":
         return pd.read_csv(uploaded_file, names=NSL_KDD_COLUMNS)
     else:
