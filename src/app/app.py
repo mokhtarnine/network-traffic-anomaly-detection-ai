@@ -13,26 +13,26 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.app.database import delete_analysis, get_history, init_db, save_analysis
 from src.data.loader import get_dataset_summary, load_from_upload, validate_dataframe
-from src.data.preprocessor import fit_and_transform, transform_with_existing
+from src.data.preprocessor import fit_and_transform, transform_with_existing, save_processed
+from src.eda.eda_analysis import (
+    basic_summary, fig_label_distribution, fig_binary_pie,
+    fig_categorical_distributions, fig_numeric_distributions,
+    fig_correlation_heatmap, fig_attack_types,
+)
 from src.evaluation.metrics import (
-    cluster_label_table,
-    evaluate_clustering,
-    identify_anomaly_cluster,
+    cluster_label_table, evaluate_clustering,
+    identify_anomaly_cluster, error_analysis,
 )
 from src.models.dbscan_model import (
-    get_anomaly_mask_dbscan,
-    get_dbscan_clusters,
-    get_dbscan_summary,
-    train_dbscan,
+    get_anomaly_mask_dbscan, get_dbscan_clusters,
+    get_dbscan_summary, train_dbscan,
 )
 from src.models.kmeans_model import (
-    get_anomaly_mask,
-    load_pretrained_kmeans,
-    predict_kmeans,
-    train_kmeans,
+    get_anomaly_mask, load_pretrained_kmeans,
+    predict_kmeans, train_kmeans,
 )
 
-# ── helpers ──────────────────────────────────────────────────────────────────
+# ── helpers ───────────────────────────────────────────────────────────────────
 
 STATE_DOWNSTREAM = ["processed_X", "labels", "preprocessor", "clusters", "anomaly_mask", "metrics"]
 
@@ -43,11 +43,34 @@ def _clear_downstream():
 
 
 def _pca_2d(X: np.ndarray) -> np.ndarray:
-    n_components = min(2, X.shape[1])
-    return PCA(n_components=n_components, random_state=42).fit_transform(X)
+    n = min(2, X.shape[1])
+    return PCA(n_components=n, random_state=42).fit_transform(X)
 
 
-# ── sections ─────────────────────────────────────────────────────────────────
+# ── sidebar ───────────────────────────────────────────────────────────────────
+
+def render_sidebar() -> tuple[str, dict]:
+    with st.sidebar:
+        st.title("Settings")
+        algorithm = st.selectbox("Algorithm", ["K-Means", "DBSCAN"], key="algorithm")
+
+        st.subheader("Parameters")
+        if algorithm == "K-Means":
+            n_clusters = st.slider("Clusters (k)", 2, 20, 5, key="km_k")
+            use_pretrained = st.checkbox("Use pre-trained model", value=False, key="km_pretrained")
+            params = {"n_clusters": n_clusters, "use_pretrained": use_pretrained}
+        else:
+            eps = st.slider("eps", 0.1, 10.0, 2.0, step=0.1, key="dbscan_eps")
+            min_samples = st.slider("min_samples", 2, 50, 10, key="dbscan_min")
+            params = {"eps": eps, "min_samples": min_samples}
+
+        st.divider()
+        st.caption("Network Traffic Anomaly Detection")
+        st.caption("SUPMTI · AI Capstone 2025-2026")
+    return algorithm, params
+
+
+# ── step 1: upload ────────────────────────────────────────────────────────────
 
 def render_upload_section():
     st.header("1 · Upload Dataset")
@@ -62,7 +85,7 @@ def render_upload_section():
         st.info("Upload a network traffic dataset to begin.")
         return
 
-    with st.spinner("Loading file…"):
+    with st.spinner("Loading…"):
         try:
             df = load_from_upload(uploaded)
         except ValueError as exc:
@@ -77,11 +100,11 @@ def render_upload_section():
     st.success(msg)
     summary = get_dataset_summary(df)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Rows", f"{summary['n_rows']:,}")
-    col2.metric("Columns", summary["n_cols"])
-    col3.metric("Null values", summary["null_count"])
-    col4.metric("Duplicates", summary["duplicate_count"])
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Rows", f"{summary['n_rows']:,}")
+    c2.metric("Columns", summary["n_cols"])
+    c3.metric("Null values", summary["null_count"])
+    c4.metric("Duplicates", summary["duplicate_count"])
 
     with st.expander("Preview (first 5 rows)"):
         st.dataframe(df.head())
@@ -90,14 +113,40 @@ def render_upload_section():
     st.session_state["filename"] = uploaded.name
 
 
-def render_preprocessing_section():
-    st.header("2 · Preprocess Data")
+# ── step 2: EDA ───────────────────────────────────────────────────────────────
 
-    use_pretrained = st.checkbox(
-        "Use pre-trained preprocessor (faster demo)",
-        value=False,
-        key="use_pretrained_pre",
-    )
+def render_eda_section(df: pd.DataFrame):
+    st.header("2 · Exploratory Data Analysis")
+    with st.expander("Show EDA", expanded=False):
+        tab1, tab2, tab3, tab4 = st.tabs(["Labels", "Categoricals", "Numerics", "Correlation"])
+
+        with tab1:
+            if "label" in df.columns:
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.plotly_chart(fig_label_distribution(df), use_container_width=True)
+                with c2:
+                    st.plotly_chart(fig_binary_pie(df), use_container_width=True)
+                if "label" in df.columns:
+                    st.plotly_chart(fig_attack_types(df), use_container_width=True)
+            else:
+                st.info("No 'label' column — label analysis not available.")
+
+        with tab2:
+            st.plotly_chart(fig_categorical_distributions(df), use_container_width=True)
+
+        with tab3:
+            st.plotly_chart(fig_numeric_distributions(df), use_container_width=True)
+
+        with tab4:
+            st.plotly_chart(fig_correlation_heatmap(df), use_container_width=True)
+
+
+# ── step 3: preprocess ────────────────────────────────────────────────────────
+
+def render_preprocessing_section():
+    st.header("3 · Preprocess Data")
+    use_pretrained = st.checkbox("Use pre-trained preprocessor (faster demo)", key="use_pretrained_pre")
 
     if st.button("Run Preprocessing", key="btn_preprocess"):
         df = st.session_state["raw_df"]
@@ -113,38 +162,28 @@ def render_preprocessing_section():
                     return
             else:
                 X, preprocessor, labels = fit_and_transform(df)
+                save_processed(X, labels, preprocessor, split="upload")
 
-        st.session_state["processed_X"] = X
-        st.session_state["preprocessor"] = preprocessor
-        st.session_state["labels"] = labels
-        st.session_state.pop("clusters", None)
-        st.session_state.pop("anomaly_mask", None)
-        st.session_state.pop("metrics", None)
+        st.session_state.update({
+            "processed_X": X, "preprocessor": preprocessor,
+            "labels": labels,
+        })
+        for k in ["clusters", "anomaly_mask", "metrics"]:
+            st.session_state.pop(k, None)
 
-        st.success(f"Preprocessing complete — feature matrix shape: {X.shape}")
+        st.success(f"Done — feature matrix: {X.shape[0]:,} rows × {X.shape[1]} features")
 
 
-def render_detection_section():
-    st.header("3 · Run Detection")
+# ── step 4: detection ─────────────────────────────────────────────────────────
 
-    with st.sidebar:
-        st.subheader("Algorithm")
-        algorithm = st.selectbox("Select algorithm", ["K-Means", "DBSCAN"], key="algorithm")
-
-        if algorithm == "K-Means":
-            n_clusters = st.slider("Number of clusters (k)", 2, 20, 5, key="km_k")
-            use_pretrained_model = st.checkbox("Use pre-trained K-Means model", value=False, key="use_pretrained_km")
-            params = {"n_clusters": n_clusters, "use_pretrained": use_pretrained_model}
-        else:
-            eps = st.slider("eps", 0.1, 10.0, 2.0, step=0.1, key="dbscan_eps")
-            min_samples = st.slider("min_samples", 2, 50, 10, key="dbscan_min")
-            params = {"eps": eps, "min_samples": min_samples}
+def render_detection_section(algorithm: str, params: dict):
+    st.header("4 · Run Detection")
 
     if st.button("Run Detection", key="btn_detect"):
         X = st.session_state["processed_X"]
         labels = st.session_state.get("labels")
 
-        with st.spinner(f"Running {algorithm}… (may take a moment on large datasets)"):
+        with st.spinner(f"Running {algorithm}…"):
             if algorithm == "K-Means":
                 if params.get("use_pretrained"):
                     try:
@@ -166,31 +205,32 @@ def render_detection_section():
                 else:
                     anomaly_id = 0
                 anomaly_mask = get_anomaly_mask(clusters, anomaly_id)
+                st.session_state["anomaly_cluster_id"] = anomaly_id
 
-            else:  # DBSCAN
+            else:
                 model = train_dbscan(X, eps=params["eps"], min_samples=params["min_samples"])
                 clusters = get_dbscan_clusters(model)
                 anomaly_mask = get_anomaly_mask_dbscan(clusters)
-                dbscan_info = get_dbscan_summary(clusters)
-
-                if dbscan_info["noise_ratio"] > 0.8:
+                summary = get_dbscan_summary(clusters)
+                if summary["noise_ratio"] > 0.8:
                     st.warning(
-                        f"{dbscan_info['noise_ratio']*100:.1f}% of points flagged as noise. "
-                        "Try increasing eps or decreasing min_samples."
+                        f"{summary['noise_ratio']*100:.1f}% flagged as noise — "
+                        "try increasing eps or decreasing min_samples."
                     )
 
         metrics = evaluate_clustering(X, clusters, labels)
-
-        st.session_state["clusters"] = clusters
-        st.session_state["anomaly_mask"] = anomaly_mask
-        st.session_state["metrics"] = metrics
-        st.session_state["params"] = params
-        st.session_state["algorithm_used"] = algorithm
+        st.session_state.update({
+            "clusters": clusters, "anomaly_mask": anomaly_mask,
+            "metrics": metrics, "params": params,
+            "algorithm_used": algorithm,
+        })
         st.success("Detection complete.")
 
 
+# ── step 5: results ───────────────────────────────────────────────────────────
+
 def render_results_section():
-    st.header("4 · Results")
+    st.header("5 · Results")
 
     clusters: np.ndarray = st.session_state["clusters"]
     anomaly_mask: np.ndarray = st.session_state["anomaly_mask"]
@@ -201,124 +241,141 @@ def render_results_section():
 
     n_total = len(clusters)
     n_anomalies = int(anomaly_mask.sum())
-    anomaly_pct = n_anomalies / n_total * 100
 
     # ── metric cards ──
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total records", f"{n_total:,}")
-    col2.metric("Anomalies detected", f"{n_anomalies:,}")
-    col3.metric("Anomaly rate", f"{anomaly_pct:.2f}%")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total records", f"{n_total:,}")
+    c2.metric("Anomalies detected", f"{n_anomalies:,}")
+    c3.metric("Anomaly rate", f"{n_anomalies/n_total*100:.2f}%")
 
-    # ── evaluation scores ──
-    st.subheader("Evaluation Metrics")
-    m_col1, m_col2, m_col3 = st.columns(3)
-    sil = metrics.get("silhouette_score")
-    db = metrics.get("davies_bouldin_score")
-    ari = metrics.get("adjusted_rand_index")
-    m_col1.metric("Silhouette Score", f"{sil:.4f}" if sil is not None else "N/A")
-    m_col2.metric("Davies-Bouldin Index", f"{db:.4f}" if db is not None else "N/A")
-    m_col3.metric("Adjusted Rand Index", f"{ari:.4f}" if ari is not None else "N/A (no labels)")
+    tab_cluster, tab_error, tab_cross = st.tabs(["Cluster View", "Error Analysis", "Cross-Tables"])
 
-    # ── cluster distribution ──
-    st.subheader("Cluster Distribution")
-    cluster_counts = pd.Series(clusters).value_counts().sort_index().reset_index()
-    cluster_counts.columns = ["Cluster", "Count"]
-    cluster_counts["Type"] = cluster_counts["Cluster"].apply(
-        lambda c: "Anomaly" if (algorithm == "DBSCAN" and c == -1)
-        else ("Anomaly" if anomaly_mask[clusters == c].all() else "Normal")
-    )
-    fig_bar = px.bar(
-        cluster_counts,
-        x="Cluster",
-        y="Count",
-        color="Type",
-        color_discrete_map={"Anomaly": "#EF553B", "Normal": "#636EFA"},
-        title="Records per Cluster",
-    )
-    st.plotly_chart(fig_bar, use_container_width=True)
+    # ── cluster view ──
+    with tab_cluster:
+        m1, m2, m3 = st.columns(3)
+        sil = metrics.get("silhouette_score")
+        db  = metrics.get("davies_bouldin_score")
+        ari = metrics.get("adjusted_rand_index")
+        m1.metric("Silhouette Score",    f"{sil:.4f}" if sil is not None else "N/A")
+        m2.metric("Davies-Bouldin Index",f"{db:.4f}"  if db  is not None else "N/A")
+        m3.metric("Adj. Rand Index",     f"{ari:.4f}" if ari is not None else "N/A (no labels)")
 
-    # ── 2-D scatter ──
-    st.subheader("Cluster Visualization (PCA 2D)")
-    with st.spinner("Computing PCA…"):
-        sample_size = min(5000, X.shape[0])
-        idx = np.random.default_rng(42).choice(X.shape[0], sample_size, replace=False)
-        coords = _pca_2d(X[idx])
+        # Cluster bar chart
+        counts = pd.Series(clusters).value_counts().sort_index().reset_index()
+        counts.columns = ["Cluster", "Count"]
+        counts["Type"] = counts["Cluster"].apply(
+            lambda c: "Anomaly" if (
+                (algorithm == "DBSCAN" and c == -1) or
+                (algorithm != "DBSCAN" and c == st.session_state.get("anomaly_cluster_id", -99))
+            ) else "Normal"
+        )
+        fig_bar = px.bar(
+            counts, x="Cluster", y="Count", color="Type",
+            color_discrete_map={"Anomaly": "#EF553B", "Normal": "#636EFA"},
+            title="Records per Cluster",
+        )
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-    scatter_df = pd.DataFrame({"PC1": coords[:, 0], "PC2": coords[:, 1] if coords.shape[1] > 1 else coords[:, 0]})
-    scatter_df["Cluster"] = clusters[idx].astype(str)
-    scatter_df["Anomaly"] = np.where(anomaly_mask[idx], "Anomaly", "Normal")
+        # PCA scatter
+        st.subheader("Cluster Visualization (PCA 2D)")
+        with st.spinner("Computing PCA…"):
+            n_sample = min(5000, X.shape[0])
+            idx = np.random.default_rng(42).choice(X.shape[0], n_sample, replace=False)
+            coords = _pca_2d(X[idx])
 
-    fig_scatter = px.scatter(
-        scatter_df,
-        x="PC1",
-        y="PC2",
-        color="Anomaly",
-        symbol="Cluster",
-        color_discrete_map={"Anomaly": "#EF553B", "Normal": "#636EFA"},
-        title=f"PCA 2D — {algorithm} clusters (sample of {sample_size:,} records)",
-        opacity=0.6,
-    )
-    st.plotly_chart(fig_scatter, use_container_width=True)
+        scatter_df = pd.DataFrame({
+            "PC1": coords[:, 0],
+            "PC2": coords[:, 1] if coords.shape[1] > 1 else coords[:, 0],
+            "Cluster": clusters[idx].astype(str),
+            "Anomaly": np.where(anomaly_mask[idx], "Anomaly", "Normal"),
+        })
+        fig_scatter = px.scatter(
+            scatter_df, x="PC1", y="PC2", color="Anomaly", symbol="Cluster",
+            color_discrete_map={"Anomaly": "#EF553B", "Normal": "#636EFA"},
+            title=f"PCA 2D — {algorithm} (sample of {n_sample:,})", opacity=0.6,
+        )
+        st.plotly_chart(fig_scatter, use_container_width=True)
 
-    # ── label cross-table ──
-    if labels is not None:
-        st.subheader("Cluster vs Label Cross-Table")
-        binary_table, original_table = cluster_label_table(clusters, labels)
-        tab1, tab2 = st.tabs(["Binary (normal / attack)", "Original labels"])
-        with tab1:
-            st.dataframe(binary_table)
-        with tab2:
-            st.dataframe(original_table)
+    # ── error analysis ──
+    with tab_error:
+        if labels is not None:
+            err = error_analysis(clusters, labels, anomaly_mask)
+            e1, e2, e3, e4 = st.columns(4)
+            e1.metric("Precision", f"{err['precision']:.4f}")
+            e2.metric("Recall",    f"{err['recall']:.4f}")
+            e3.metric("F1 Score",  f"{err['f1_score']:.4f}")
+            e4.metric("False Negatives", f"{err['false_negatives']:,}")
 
+            st.subheader("Missed Attack Types (False Negatives)")
+            if not err["missed_attack_types"].empty:
+                fn_df = err["missed_attack_types"].reset_index()
+                fn_df.columns = ["Attack Type", "Count"]
+                fig_fn = px.bar(
+                    fn_df, x="Count", y="Attack Type", orientation="h",
+                    title="Attacks Not Detected", color="Count",
+                    color_continuous_scale="Reds",
+                )
+                fig_fn.update_layout(yaxis={"categoryorder": "total ascending"},
+                                     coloraxis_showscale=False)
+                st.plotly_chart(fig_fn, use_container_width=True)
+            else:
+                st.success("All attack types were detected.")
+
+            st.subheader("Attack Types per Cluster")
+            st.dataframe(err["attack_type_per_cluster"], use_container_width=True)
+        else:
+            st.info("Error analysis requires a dataset with a 'label' column (NSL-KDD format).")
+
+    # ── cross-tables ──
+    with tab_cross:
+        if labels is not None:
+            binary_table, original_table = cluster_label_table(clusters, labels)
+            t1, t2 = st.tabs(["Binary (normal / attack)", "Original labels"])
+            with t1:
+                st.dataframe(binary_table, use_container_width=True)
+            with t2:
+                st.dataframe(original_table, use_container_width=True)
+        else:
+            st.info("Cross-tables require a 'label' column.")
+
+
+# ── step 6: export ────────────────────────────────────────────────────────────
 
 def render_export_section():
-    st.header("5 · Export & Save")
+    st.header("6 · Export & Save")
 
-    clusters: np.ndarray = st.session_state["clusters"]
-    anomaly_mask: np.ndarray = st.session_state["anomaly_mask"]
-    raw_df: pd.DataFrame = st.session_state["raw_df"]
-    metrics: dict = st.session_state["metrics"]
-    params: dict = st.session_state.get("params", {})
-    algorithm = st.session_state.get("algorithm_used", "unknown")
-    filename = st.session_state.get("filename", "upload")
+    clusters     = st.session_state["clusters"]
+    anomaly_mask = st.session_state["anomaly_mask"]
+    raw_df       = st.session_state["raw_df"]
+    metrics      = st.session_state["metrics"]
+    params       = st.session_state.get("params", {})
+    algorithm    = st.session_state.get("algorithm_used", "unknown")
+    filename     = st.session_state.get("filename", "upload")
 
     export_df = raw_df.copy().iloc[: len(clusters)]
-    export_df["cluster"] = clusters
+    export_df["cluster"]    = clusters
     export_df["is_anomaly"] = anomaly_mask
 
-    col_csv, col_pdf, col_save = st.columns(3)
-
-    # CSV download
-    with col_csv:
-        csv_bytes = export_df.to_csv(index=False).encode()
+    c1, c2, c3 = st.columns(3)
+    with c1:
         st.download_button(
-            label="Download CSV report",
-            data=csv_bytes,
+            "Download CSV report",
+            data=export_df.to_csv(index=False).encode(),
             file_name=f"anomaly_report_{algorithm.lower()}.csv",
             mime="text/csv",
         )
-
-    # PDF download
-    with col_pdf:
+    with c2:
         pdf_bytes = _build_pdf(filename, algorithm, clusters, anomaly_mask, metrics, params)
         st.download_button(
-            label="Download PDF report",
+            "Download PDF report",
             data=pdf_bytes,
             file_name=f"anomaly_report_{algorithm.lower()}.pdf",
             mime="application/pdf",
         )
-
-    # Save to history
-    with col_save:
-        if st.button("Save to History", key="btn_save"):
-            save_analysis(
-                filename=filename,
-                algorithm=algorithm,
-                n_records=len(clusters),
-                n_anomalies=int(anomaly_mask.sum()),
-                metrics=metrics,
-                params=params,
-            )
+    with c3:
+        if st.button("Save to History"):
+            save_analysis(filename, algorithm, len(clusters),
+                          int(anomaly_mask.sum()), metrics, params)
             st.success("Saved to analysis history.")
 
 
@@ -326,13 +383,14 @@ def _build_pdf(filename, algorithm, clusters, anomaly_mask, metrics, params) -> 
     try:
         from fpdf import FPDF
     except ImportError:
-        return b"fpdf2 not installed. Run: pip install fpdf2"
+        return b"fpdf2 not installed."
 
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 16)
     pdf.cell(0, 10, "Network Traffic Anomaly Detection Report", ln=True)
-    pdf.set_font("Helvetica", "", 11)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.cell(0, 6, "SUPMTI Rabat | AI Capstone 2025-2026 | Project 15", ln=True)
     pdf.ln(4)
 
     rows = [
@@ -340,21 +398,21 @@ def _build_pdf(filename, algorithm, clusters, anomaly_mask, metrics, params) -> 
         ("Algorithm", algorithm),
         ("Total records", f"{len(clusters):,}"),
         ("Anomalies detected", f"{int(anomaly_mask.sum()):,}"),
-        ("Anomaly rate", f"{anomaly_mask.sum() / len(clusters) * 100:.2f}%"),
+        ("Anomaly rate", f"{anomaly_mask.sum()/len(clusters)*100:.2f}%"),
         ("Silhouette Score", str(metrics.get("silhouette_score", "N/A"))),
         ("Davies-Bouldin Index", str(metrics.get("davies_bouldin_score", "N/A"))),
         ("Adjusted Rand Index", str(metrics.get("adjusted_rand_index", "N/A"))),
     ]
     for label, value in rows:
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(70, 8, label + ":", border=0)
+        pdf.cell(75, 8, label + ":", border=0)
         pdf.set_font("Helvetica", "", 11)
-        pdf.cell(0, 8, value, ln=True)
+        pdf.cell(0, 8, str(value), ln=True)
 
     if params:
         pdf.ln(4)
         pdf.set_font("Helvetica", "B", 11)
-        pdf.cell(0, 8, "Algorithm Parameters:", ln=True)
+        pdf.cell(0, 8, "Parameters:", ln=True)
         pdf.set_font("Helvetica", "", 11)
         for k, v in params.items():
             pdf.cell(0, 8, f"  {k}: {v}", ln=True)
@@ -362,23 +420,23 @@ def _build_pdf(filename, algorithm, clusters, anomaly_mask, metrics, params) -> 
     return pdf.output()
 
 
+# ── history ───────────────────────────────────────────────────────────────────
+
 def render_history_section():
     df = get_history()
     if df.empty:
         st.info("No analyses saved yet.")
         return
-
     st.dataframe(df.drop(columns=["params_json"], errors="ignore"), use_container_width=True)
-
     with st.expander("Delete an entry"):
-        row_id = st.number_input("Row ID to delete", min_value=1, step=1, key="del_id")
+        row_id = st.number_input("Row ID", min_value=1, step=1, key="del_id")
         if st.button("Delete", key="btn_del"):
             delete_analysis(int(row_id))
             st.success(f"Row {row_id} deleted.")
             st.rerun()
 
 
-# ── main ─────────────────────────────────────────────────────────────────────
+# ── main ──────────────────────────────────────────────────────────────────────
 
 def main():
     st.set_page_config(
@@ -388,18 +446,22 @@ def main():
     )
     init_db()
 
+    algorithm, params = render_sidebar()
+
     st.title("Network Traffic Anomaly Detection")
-    st.caption("Upload a dataset, select an algorithm, and detect anomalous traffic patterns.")
+    st.caption("Project 15 — Clustering | SUPMTI AI Capstone 2025-2026")
 
     render_upload_section()
 
     if "raw_df" in st.session_state:
         st.divider()
+        render_eda_section(st.session_state["raw_df"])
+        st.divider()
         render_preprocessing_section()
 
     if "processed_X" in st.session_state:
         st.divider()
-        render_detection_section()
+        render_detection_section(algorithm, params)
 
     if "clusters" in st.session_state:
         st.divider()
