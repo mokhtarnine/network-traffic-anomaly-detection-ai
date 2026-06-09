@@ -1,105 +1,172 @@
-from pathlib import Path
-import sys
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-sys.path.append(str(PROJECT_ROOT))
 
-import matplotlib.pyplot as plt
+CATEGORICAL_COLUMNS = ["protocol_type", "service", "flag"]
+DROP_COLUMNS        = ["label", "difficulty", "binary_label"]
 
-from src.data.load_dataset import load_nsl_kdd
+# Consistent layout applied to every chart
+_LAYOUT = dict(
+    template="plotly_white",
+    font=dict(family="Inter, system-ui, -apple-system, sans-serif", size=12, color="#374151"),
+    plot_bgcolor="white",
+    paper_bgcolor="white",
+    margin=dict(l=40, r=20, t=50, b=40),
+    hoverlabel=dict(bgcolor="white", font_size=12, bordercolor="#e2e8f0"),
+    title_font=dict(size=14, color="#0f172a", weight="bold"),
+)
 
-def print_section(title):
-    print("\n" + "=" * 60)
-    print(title)
-    print("=" * 60)
+_COLORS = {"normal": "#4f86f7", "attack": "#ef4444"}
 
-def main():
-    train_df, test_df = load_nsl_kdd()
 
-    print_section("Dataset Shape")
-    print("Train shape:", train_df.shape)
-    print("Test shape:", test_df.shape)
+# ── summary ───────────────────────────────────────────────────────────────────
 
-    print_section("First 5 Rows")
-    print(train_df.head())
+def basic_summary(df: pd.DataFrame) -> dict:
+    return {
+        "shape":          df.shape,
+        "missing_total":  int(df.isna().sum().sum()),
+        "missing_per_col": df.isna().sum().to_dict(),
+        "duplicates":     int(df.duplicated().sum()),
+        "dtypes":         df.dtypes.astype(str).to_dict(),
+    }
 
-    print_section("Column Names")
-    print(train_df.columns.tolist())
 
-    print_section("Dataset Info")
-    print(train_df.info())
-
-    print_section("Missing Values")
-    print(train_df.isnull().sum())
-
-    print_section("Duplicate Rows")
-    print("Train duplicates:", train_df.duplicated().sum())
-    print("Test duplicates:", test_df.duplicated().sum())
-
-    print_section("Label Distribution")
-    print(train_df["label"].value_counts())
-
-    train_df["binary_label"] = train_df["label"].apply(
-        lambda label: "normal" if label == "normal" else "attack"
+def label_distribution(df: pd.DataFrame) -> pd.DataFrame:
+    counts = df["label"].value_counts().reset_index()
+    counts.columns = ["label", "count"]
+    counts["binary"] = counts["label"].apply(
+        lambda x: "normal" if str(x).strip().lower() == "normal" else "attack"
     )
+    return counts
 
-    test_df["binary_label"] = test_df["label"].apply(
-        lambda label: "normal" if label == "normal" else "attack"
+
+def binary_distribution(df: pd.DataFrame) -> pd.Series:
+    return df["label"].apply(
+        lambda x: "normal" if str(x).strip().lower() == "normal" else "attack"
+    ).value_counts()
+
+
+# ── figures ───────────────────────────────────────────────────────────────────
+
+def fig_label_distribution(df: pd.DataFrame) -> go.Figure:
+    top = label_distribution(df).head(15)
+    fig = px.bar(
+        top, x="label", y="count", color="binary",
+        color_discrete_map=_COLORS,
+        title="Traffic Label Distribution (top 15)",
+        labels={"label": "Label", "count": "Count", "binary": "Type"},
     )
-
-    print_section("Binary Label Distribution")
-    print(train_df["binary_label"].value_counts())
-
-    print_section("Categorical Feature Distribution")
-    categorical_columns = ["protocol_type", "service", "flag"]
-
-    for column in categorical_columns:
-        print(f"\n{column}:")
-        print(train_df[column].value_counts().head(10))
-
-    print_section("Numerical Summary")
-    print(train_df.describe())
-
-    print_section("Top 10 Attack Types")
-    attack_counts = train_df[train_df["label"] != "normal"]["label"].value_counts()
-    print(attack_counts.head(10))
-
-    print_section("EDA Summary")
-
-    train_missing_total = train_df.isnull().sum().sum()
-    test_missing_total = test_df.isnull().sum().sum()
-    train_duplicates = train_df.duplicated().sum()
-    test_duplicates = test_df.duplicated().sum()
-    label_count = train_df["label"].nunique()
-    binary_counts = train_df["binary_label"].value_counts()
-
-    if train_missing_total == 0 and test_missing_total == 0:
-        print("No missing values were found in the train or test datasets.")
-    else:
-        print(f"Train missing values: {train_missing_total}")
-        print(f"Test missing values: {test_missing_total}")
-
-    if train_duplicates == 0 and test_duplicates == 0:
-        print("No duplicate rows were found in the train or test datasets.")
-    else:
-        print(f"Train duplicate rows: {train_duplicates}")
-        print(f"Test duplicate rows: {test_duplicates}")
-
-    if "normal" in binary_counts.index and "attack" in binary_counts.index:
-        print("The training dataset contains both normal and attack traffic.")
-    else:
-        print("Warning: the training dataset does not contain both normal and attack traffic.")
-
-    if label_count > 2:
-        print(f"The label column contains {label_count} classes: normal plus multiple attack types.")
-    else:
-        print(f"The label column contains {label_count} classes.")
-
-    print("The binary_label column was created only for EDA/evaluation, not for clustering training.")
-    print("Categorical features must be encoded before clustering.")
-    print("Numerical features must be scaled because clustering algorithms are distance-based.")
-    print("The difficulty column is metadata and should be removed before clustering.")
+    fig.update_layout(**_LAYOUT, xaxis_tickangle=-35, showlegend=True)
+    fig.update_traces(marker_line_width=0)
+    return fig
 
 
-if __name__ == "__main__":
-    main()
+def fig_binary_pie(df: pd.DataFrame) -> go.Figure:
+    binary = binary_distribution(df)
+    fig = px.pie(
+        values=binary.values, names=binary.index,
+        title="Normal vs Attack Split",
+        color=binary.index,
+        color_discrete_map=_COLORS,
+        hole=0.45,
+    )
+    fig.update_layout(**_LAYOUT)
+    fig.update_traces(textposition="outside", textinfo="percent+label")
+    return fig
+
+
+def fig_categorical_distributions(df: pd.DataFrame) -> go.Figure:
+    palette = ["#4f86f7", "#f97316", "#10b981"]
+    fig = make_subplots(rows=1, cols=3, subplot_titles=CATEGORICAL_COLUMNS)
+    for i, col in enumerate(CATEGORICAL_COLUMNS, start=1):
+        vc = df[col].value_counts().head(10)
+        fig.add_trace(
+            go.Bar(
+                x=vc.index.tolist(), y=vc.values.tolist(),
+                name=col, marker_color=palette[i - 1],
+                marker_line_width=0,
+            ),
+            row=1, col=i,
+        )
+    fig.update_layout(**_LAYOUT, title="Categorical Feature Distributions (top 10 each)", showlegend=False)
+    return fig
+
+
+def fig_numeric_distributions(df: pd.DataFrame, n_cols: int = 4) -> go.Figure:
+    num_cols = [
+        c for c in df.columns
+        if c not in CATEGORICAL_COLUMNS + DROP_COLUMNS and pd.api.types.is_numeric_dtype(df[c])
+    ][:20]
+    n_rows = int(np.ceil(len(num_cols) / n_cols))
+    fig = make_subplots(rows=n_rows, cols=n_cols, subplot_titles=num_cols)
+    for idx, col in enumerate(num_cols):
+        r, c = divmod(idx, n_cols)
+        fig.add_trace(
+            go.Histogram(
+                x=df[col], name=col, nbinsx=30,
+                showlegend=False, marker_color="#4f86f7", marker_line_width=0,
+            ),
+            row=r + 1, col=c + 1,
+        )
+    fig.update_layout(**_LAYOUT, title="Numeric Feature Distributions", height=220 * n_rows)
+    return fig
+
+
+def fig_correlation_heatmap(df: pd.DataFrame, top_n: int = 20) -> go.Figure:
+    num_df   = df.select_dtypes(include="number").drop(
+        columns=[c for c in ["difficulty"] if c in df.columns]
+    )
+    top_cols = num_df.std().nlargest(top_n).index.tolist()
+    corr     = num_df[top_cols].corr()
+    fig = px.imshow(
+        corr,
+        color_continuous_scale="RdBu_r",
+        zmin=-1, zmax=1,
+        title=f"Correlation Heatmap — top {top_n} numeric features by variance",
+        aspect="auto",
+    )
+    fig.update_layout(**_LAYOUT)
+    fig.update_coloraxes(colorbar_thickness=14)
+    return fig
+
+
+def fig_attack_types(df: pd.DataFrame, top_n: int = 15) -> go.Figure:
+    attacks = (
+        df[df["label"].str.strip().str.lower() != "normal"]["label"]
+        .value_counts()
+        .head(top_n)
+    )
+    fig = px.bar(
+        x=attacks.values, y=attacks.index,
+        orientation="h",
+        title=f"Top {top_n} Attack Types",
+        labels={"x": "Count", "y": "Attack Type"},
+        color=attacks.values,
+        color_continuous_scale=["#fca5a5", "#ef4444", "#991b1b"],
+    )
+    fig.update_layout(
+        **_LAYOUT,
+        yaxis={"categoryorder": "total ascending"},
+        coloraxis_showscale=False,
+    )
+    fig.update_traces(marker_line_width=0)
+    return fig
+
+
+def fig_feature_by_binary_label(df: pd.DataFrame, feature: str) -> go.Figure:
+    plot_df = df[[feature, "label"]].copy()
+    plot_df["binary"] = plot_df["label"].apply(
+        lambda x: "normal" if str(x).strip().lower() == "normal" else "attack"
+    )
+    fig = px.box(
+        plot_df, x="binary", y=feature,
+        color="binary",
+        color_discrete_map=_COLORS,
+        title=f"{feature} — normal vs attack",
+        points=False,
+    )
+    fig.update_layout(**_LAYOUT)
+    return fig
