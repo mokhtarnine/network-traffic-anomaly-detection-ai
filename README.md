@@ -18,6 +18,7 @@ Modern networks generate massive volumes of traffic, making manual anomaly detec
 network-traffic-anomaly-detection-ai/
 ├── data/
 │   ├── raw/
+│   │   └── KDDTrain+.txt         NSL-KDD TRAIN dataset
 │   │   └── KDDTest+.txt          NSL-KDD test dataset (22,544 rows)
 │   └── processed/                Preprocessed arrays (generated at runtime)
 ├── notebooks/
