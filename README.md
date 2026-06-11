@@ -53,7 +53,7 @@ network-traffic-anomaly-detection-ai/
 |---|---|---|
 | **Problem & Data** | Clear problem definition | ✅ |
 | | Relevant public dataset (NSL-KDD) | ✅ |
-| | EDA with visualizations | ✅ `notebooks/01_eda.ipynb` + in-app EDA tab |
+| | EDA with visualizations | ✅ `src/eda/eda_analysis.py` + in-app EDA tab |
 | | Quality preprocessing | ✅ OneHotEncoding + StandardScaler |
 | **Modeling** | Baseline algorithm | ✅ K-Means (k=5) — justified by elbow curve |
 | | Improved algorithm | ✅ DBSCAN — eps chosen from k-distance graph |
