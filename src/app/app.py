@@ -21,9 +21,6 @@ from src.eda.eda_analysis import (
 from src.evaluation.metrics import (
     cluster_label_table, error_analysis, evaluate_clustering, identify_anomaly_cluster,
 )
-from src.models.dbscan_model import (
-    get_anomaly_mask_dbscan, get_dbscan_clusters, get_dbscan_summary, train_dbscan,
-)
 from src.models.kmeans_model import (
     get_anomaly_mask, load_pretrained_kmeans, predict_kmeans, train_kmeans,
 )
@@ -185,6 +182,63 @@ def _inject_css() -> None:
 /* ── Info / success / warning ─────────────────────────────────────────────── */
 [data-testid="stAlert"] { border-radius: 10px !important; }
 
+/* App polish: reduce Streamlit branding/chrome */
+#MainMenu,
+footer,
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+[data-testid="stDeployButton"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+header { background: transparent !important; }
+.block-container {
+    padding-top: 1.2rem !important;
+    padding-bottom: 2.5rem !important;
+    max-width: 1180px !important;
+}
+.app-hero {
+    background: linear-gradient(135deg, #f8fafc 0%, #eef6ff 48%, #f7fee7 100%);
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin: 4px 0 18px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+.app-hero h1 {
+    color: #0f172a;
+    font-size: 2rem;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    letter-spacing: 0;
+}
+.app-hero p {
+    color: #334155;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin: 0;
+}
+.app-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e0f2fe;
+    color: #075985;
+    border: 1px solid #bae6fd;
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+.stMarkdown, .stText, p, span, label {
+    letter-spacing: 0 !important;
+}
+[data-testid="stCaptionContainer"] {
+    display: none !important;
+}
+
 /* ── Section divider ──────────────────────────────────────────────────────── */
 hr { border-color: #f1f5f9 !important; }
 
@@ -195,6 +249,18 @@ h2 { color: #0f172a !important; font-weight: 700 !important; }
 
 
 # ── empty state ────────────────────────────────────────────────────────────────
+
+def _render_app_header() -> None:
+    st.markdown("""
+<section class="app-hero">
+  <h1>Network Traffic Anomaly Detection</h1>
+  <p>
+    Analyze NSL-KDD traffic, run clustering-based anomaly detection, inspect cluster
+    quality, and export a clean report from one workflow.
+  </p>
+</section>
+""", unsafe_allow_html=True)
+
 
 def _render_empty_state() -> None:
     st.markdown("""
@@ -221,7 +287,7 @@ def _render_empty_state() -> None:
       <span style="font-weight:700;color:#166534;font-size:.95rem">2 · Detect</span>
       <span style="color:#16a34a;font-size:.82rem;line-height:1.4">
         Preprocessing pipeline + unsupervised clustering
-        (K-Means or DBSCAN) to find anomalies.
+        with K-Means to find anomalies.
       </span>
     </div>
 
@@ -288,56 +354,40 @@ _KM_DESC = """
 </div>
 """
 
-_DB_DESC = """
-<div style="background:#f0fdf4;border-left:3px solid #22c55e;border-radius:0 8px 8px 0;
-            padding:11px 14px;margin:8px 0 14px;font-size:.81rem;color:#14532d;line-height:1.5">
-  <strong>DBSCAN</strong> groups dense regions of points. Sparse points are labelled
-  <em>noise (−1)</em> and treated as anomalies — no need to pre-specify the number
-  of clusters.
-</div>
-"""
 
 
-def render_sidebar() -> tuple[str, dict]:
+def render_sidebar() -> dict:
     with st.sidebar:
-        st.title("⚙ Settings")
-        algorithm = st.selectbox("Algorithm", ["K-Means", "DBSCAN"], key="algorithm")
+        st.title("Settings")
+        st.markdown(_KM_DESC, unsafe_allow_html=True)
+        n_clusters = st.slider("Clusters (k)", 2, 20, 5, key="km_k")
+        use_pretrained = st.checkbox(
+            "Use pre-trained model", value=False, key="km_pretrained"
+        )
+        params = {"n_clusters": n_clusters, "use_pretrained": use_pretrained}
 
-        if algorithm == "K-Means":
-            st.markdown(_KM_DESC, unsafe_allow_html=True)
-            n_clusters     = st.slider("Clusters (k)", 2, 20, 5, key="km_k")
-            use_pretrained = st.checkbox("Use pre-trained model", value=False, key="km_pretrained")
-            params = {"n_clusters": n_clusters, "use_pretrained": use_pretrained}
-        else:
-            st.markdown(_DB_DESC, unsafe_allow_html=True)
-            eps         = st.slider("eps",         0.1, 10.0, 2.0, step=0.1, key="dbscan_eps")
-            min_samples = st.slider("min_samples", 2,   50,   10,             key="dbscan_min")
-            params = {"eps": eps, "min_samples": min_samples}
-
-        # Live results summary
         if "clusters" in st.session_state:
             st.divider()
-            n_an  = int(st.session_state["anomaly_mask"].sum())
+            n_an = int(st.session_state["anomaly_mask"].sum())
             n_tot = len(st.session_state["clusters"])
-            rate  = n_an / n_tot * 100
-            sil   = st.session_state["metrics"].get("silhouette_score")
-            alg_u = st.session_state.get("algorithm_used", algorithm)
+            rate = n_an / n_tot * 100
+            sil = st.session_state["metrics"].get("silhouette_score")
             sil_s = f"{sil:.3f}" if sil is not None else "N/A"
             st.markdown(f"""
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
             padding:13px 15px;font-size:.82rem;line-height:1.8;color:#374151">
   <div style="font-weight:700;color:#0f172a;margin-bottom:6px">Current Analysis</div>
-  <div>📊 &nbsp;<strong>{alg_u}</strong></div>
-  <div>🚨 &nbsp;{n_an:,} anomalies &nbsp;({rate:.1f}%)</div>
-  <div>📈 &nbsp;Silhouette: <strong>{sil_s}</strong></div>
+  <div><strong>K-Means</strong></div>
+  <div>{n_an:,} anomalies ({rate:.1f}%)</div>
+  <div>Silhouette: <strong>{sil_s}</strong></div>
 </div>
 """, unsafe_allow_html=True)
 
         st.divider()
         st.caption("Network Traffic Anomaly Detection")
-        st.caption("SUPMTI · AI Capstone 2025-2026")
+        st.caption("SUPMTI | AI Capstone 2025-2026")
 
-    return algorithm, params
+    return params
 
 
 # ── step 1: upload ─────────────────────────────────────────────────────────────
@@ -445,65 +495,84 @@ def render_preprocessing_section() -> None:
 
 # ── step 4: detection ──────────────────────────────────────────────────────────
 
-def render_detection_section(algorithm: str, params: dict) -> None:
-    st.header("4 · Run Detection")
+def render_detection_section(params: dict) -> None:
+    st.header("4 - Run Detection")
+
+    st.markdown(
+        """
+        <div style="background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;
+                    padding:14px 16px;margin:4px 0 12px;color:#334155">
+          <strong style="color:#0f172a">K-Means Settings</strong><br>
+          Choose how many clusters the model should create before running detection.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if params.get("use_pretrained"):
+        st.info(
+            "The pre-trained K-Means model uses k = 5. "
+            "Disable the pre-trained model in Settings to choose another k."
+        )
+    else:
+        params["n_clusters"] = st.slider(
+            "Number of clusters (k)",
+            min_value=2,
+            max_value=20,
+            value=int(params.get("n_clusters", 5)),
+            step=1,
+            key="main_kmeans_clusters",
+        )
 
     if st.button("Run Detection", key="btn_detect", type="primary"):
-        X      = st.session_state["processed_X"]
+        X = st.session_state["processed_X"]
         labels = st.session_state.get("labels")
 
-        with st.spinner(f"Running {algorithm}…"):
-            if algorithm == "K-Means":
-                if params.get("use_pretrained"):
-                    try:
-                        model    = load_pretrained_kmeans()
-                        clusters = predict_kmeans(model, X)
-                    except Exception as exc:
-                        st.error(f"Could not load pre-trained model: {exc}")
-                        return
-                else:
-                    model    = train_kmeans(X, n_clusters=params["n_clusters"])
-                    clusters = predict_kmeans(model, X)
-
-                anomaly_id = 0
-                purity     = None
-                if labels is not None:
-                    try:
-                        binary_table, _ = cluster_label_table(clusters, labels)
-                        anomaly_id      = identify_anomaly_cluster(binary_table)
-                        row             = binary_table.loc[anomaly_id]
-                        n_attack        = int(row.get("attack", 0))
-                        purity          = round(n_attack / row.sum() * 100, 1)
-                    except Exception as exc:
-                        st.warning(
-                            f"Could not auto-identify anomaly cluster ({exc}). "
-                            "Defaulting to cluster 0."
+        with st.spinner("Running K-Means..."):
+            if params.get("use_pretrained"):
+                try:
+                    model = load_pretrained_kmeans()
+                    expected = getattr(model, "n_features_in_", None)
+                    if expected is not None and X.shape[1] != expected:
+                        st.error(
+                            "The uploaded data was processed with a different feature layout. "
+                            "Run preprocessing again with 'Use pre-trained preprocessor' enabled, "
+                            "then run the pre-trained K-Means model."
                         )
-
-                anomaly_mask = get_anomaly_mask(clusters, anomaly_id)
-                st.session_state["anomaly_cluster_id"] = anomaly_id
-                st.session_state["anomaly_purity"]     = purity
-
+                        return
+                    clusters = predict_kmeans(model, X)
+                except Exception as exc:
+                    st.error(f"Could not load pre-trained model: {exc}")
+                    return
             else:
-                model        = train_dbscan(X, eps=params["eps"], min_samples=params["min_samples"])
-                clusters     = get_dbscan_clusters(model)
-                anomaly_mask = get_anomaly_mask_dbscan(clusters)
-                summary      = get_dbscan_summary(clusters)
-                st.session_state.pop("anomaly_cluster_id", None)
-                st.session_state["anomaly_purity"] = None
-                if summary["noise_ratio"] > 0.8:
+                model = train_kmeans(X, n_clusters=params["n_clusters"])
+                clusters = predict_kmeans(model, X)
+
+            anomaly_id = 0
+            purity = None
+            if labels is not None:
+                try:
+                    binary_table, _ = cluster_label_table(clusters, labels)
+                    anomaly_id = identify_anomaly_cluster(binary_table)
+                    row = binary_table.loc[anomaly_id]
+                    n_attack = int(row.get("attack", 0))
+                    purity = round(n_attack / row.sum() * 100, 1)
+                except Exception as exc:
                     st.warning(
-                        f"{summary['noise_ratio'] * 100:.1f}% of points flagged as noise — "
-                        "try increasing eps or decreasing min_samples."
+                        f"Could not auto-identify anomaly cluster ({exc}). "
+                        "Defaulting to cluster 0."
                     )
+
+            anomaly_mask = get_anomaly_mask(clusters, anomaly_id)
+            st.session_state["anomaly_cluster_id"] = anomaly_id
+            st.session_state["anomaly_purity"] = purity
 
         metrics = evaluate_clustering(X, clusters, labels)
         st.session_state.update({
-            "clusters":       clusters,
-            "anomaly_mask":   anomaly_mask,
-            "metrics":        metrics,
-            "params":         params,
-            "algorithm_used": algorithm,
+            "clusters": clusters,
+            "anomaly_mask": anomaly_mask,
+            "metrics": metrics,
+            "params": params,
+            "algorithm_used": "K-Means",
         })
         st.success("Detection complete.")
 
@@ -518,7 +587,7 @@ def render_results_section() -> None:
     metrics:      dict             = st.session_state["metrics"]
     X:            np.ndarray       = st.session_state["processed_X"]
     labels:       pd.Series | None = st.session_state.get("labels")
-    algorithm:    str              = st.session_state.get("algorithm_used", "")
+    algorithm:    str              = "K-Means"
     purity:       float | None     = st.session_state.get("anomaly_purity")
 
     n_total     = len(clusters)
@@ -536,17 +605,12 @@ def render_results_section() -> None:
     c3.metric("Anomaly rate", f"{rate:.2f}%")
 
     # ── interpretation banner ──────────────────────────────────────────────────
-    if algorithm == "K-Means" and "anomaly_cluster_id" in st.session_state:
-        cid        = st.session_state["anomaly_cluster_id"]
+    if "anomaly_cluster_id" in st.session_state:
+        cid = st.session_state["anomaly_cluster_id"]
         purity_str = f", {purity:.1f}% attack purity" if purity is not None else ""
         st.info(
             f"**Cluster {cid}** is the anomaly cluster{purity_str}. "
             f"All {n_anomalies:,} records it contains are flagged as anomalies."
-        )
-    elif algorithm == "DBSCAN":
-        st.info(
-            f"DBSCAN labels noise points (cluster = −1) as anomalies. "
-            f"{n_anomalies:,} records ({rate:.1f}% of traffic) flagged."
         )
 
     tab_cluster, tab_error, tab_cross = st.tabs(
@@ -573,10 +637,7 @@ def render_results_section() -> None:
         )
         counts.columns = ["Cluster", "Count"]
         counts["Type"] = counts["Cluster"].apply(
-            lambda c: "Anomaly"
-            if (algorithm == "DBSCAN" and c == -1)
-            or (algorithm != "DBSCAN" and c == anomaly_cluster_id)
-            else "Normal"
+            lambda c: "Anomaly" if c == anomaly_cluster_id else "Normal"
         )
         fig_bar = px.bar(
             counts, x="Cluster", y="Count", color="Type",
@@ -771,7 +832,12 @@ def _build_pdf(
         for k, v in params.items():
             pdf.cell(0, 8, f"  {k}: {v}", ln=True)
 
-    return pdf.output()
+    output = pdf.output()
+    if isinstance(output, bytearray):
+        return bytes(output)
+    if isinstance(output, str):
+        return output.encode("latin-1")
+    return output
 
 
 # ── history ────────────────────────────────────────────────────────────────────
@@ -816,9 +882,9 @@ def main() -> None:
     _inject_css()
     init_db()
 
-    algorithm, params = render_sidebar()
+    params = render_sidebar()
 
-    st.title("Network Traffic Anomaly Detection")
+    _render_app_header()
     st.caption("Project 15 — Unsupervised Clustering · SUPMTI AI Capstone 2025-2026 · Pr. Soufiane HAMIDA")
     _render_step_progress()
     st.divider()
@@ -833,7 +899,7 @@ def main() -> None:
 
     if "processed_X" in st.session_state:
         st.divider()
-        render_detection_section(algorithm, params)
+        render_detection_section(params)
 
     if "clusters" in st.session_state:
         st.divider()
