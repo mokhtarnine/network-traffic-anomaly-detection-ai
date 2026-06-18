@@ -22,17 +22,17 @@ def load_from_upload(uploaded_file) -> pd.DataFrame:
 
     if ext == "csv":
         return pd.read_csv(uploaded_file)
-    elif ext == "xlsx":
+    if ext == "xlsx":
         return pd.read_excel(uploaded_file, engine="openpyxl")
-    elif ext == "xls":
+    if ext == "xls":
         try:
             return pd.read_excel(uploaded_file)
         except ImportError:
             raise ValueError("Reading .xls files requires xlrd: pip install xlrd")
-    elif ext == "txt":
+    if ext == "txt":
         return pd.read_csv(uploaded_file, names=NSL_KDD_COLUMNS)
-    else:
-        raise ValueError(f"Unsupported file format '.{ext}'. Upload CSV, Excel, or NSL-KDD TXT.")
+
+    raise ValueError(f"Unsupported file format '.{ext}'. Upload CSV, Excel, or NSL-KDD TXT.")
 
 
 def validate_dataframe(df: pd.DataFrame) -> tuple[bool, str]:
@@ -42,7 +42,7 @@ def validate_dataframe(df: pd.DataFrame) -> tuple[bool, str]:
     if df.shape[1] < 5:
         return False, f"Too few columns ({df.shape[1]}). Expected at least 5 feature columns."
 
-    fully_null = [c for c in df.columns if df[c].isna().all()]
+    fully_null = [column for column in df.columns if df[column].isna().all()]
     if fully_null:
         return False, f"Columns are entirely null: {fully_null}"
 
