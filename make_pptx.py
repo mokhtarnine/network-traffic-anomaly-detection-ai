@@ -94,7 +94,7 @@ def header(sl, title, subtitle=None):
 def content_y(has_subtitle=True):
     return TM + (Inches(0.96) if has_subtitle else Inches(0.72))
 
-def pgnum(sl, n, total=14):
+def pgnum(sl, n, total=15):
     txt(sl, f"{n}  /  {total}", SW - RM - Inches(1.1), SH - Inches(0.42),
         Inches(1.1), Inches(0.3), 9, W3, align=PP_ALIGN.RIGHT)
 
@@ -114,7 +114,7 @@ def callout(sl, sx, sy, label, direction="right",
             line_len=Inches(0.5), lw=Inches(2.5)):
     """Dot + line + label box annotation."""
     D  = Inches(0.09)
-    LH = Inches(0.26)
+    LH = Inches(0.30)   # taller box — prevents text clipping
     TK = Inches(0.013)
 
     box(sl, sx - D/2, sy - D/2, D, D, fill=AMB)    # dot
@@ -133,8 +133,8 @@ def callout(sl, sx, sy, label, direction="right",
         bx, by = sx - lw/2, sy + D/2 + line_len
 
     box(sl, bx, by, lw, LH, fill=SURF2, border=AMB, bpt=0.9)
-    txt(sl, label, bx + Inches(0.1), by + Inches(0.02),
-        lw - Inches(0.12), LH, 8.5, AMB, True)
+    txt(sl, label, bx + Inches(0.1), by + Inches(0.03),
+        lw - Inches(0.14), LH - Inches(0.04), 8.5, AMB, True)
 
 def ss_slide(prs, title, subtitle, fname):
     """Screenshot slide with dark header bar."""
@@ -189,6 +189,17 @@ def s01(prs):
         txt(sl, lbl.upper(), x, Inches(4.4), Inches(3.2), Inches(0.26), 7.5, W3, True)
         txt(sl, val,          x, Inches(4.64), Inches(3.2), Inches(0.36), 13.5, W1, True)
 
+    # Bottom stat strip — fills the dead space
+    rule(sl, Inches(5.32), LM, Inches(4.2), LINE)
+    for i, (num, lbl) in enumerate([
+        ("125,973", "training records"),
+        ("6 steps",  "automated pipeline"),
+        ("44 tests", "all passing"),
+    ]):
+        x = LM + i * Inches(3.06)
+        txt(sl, num, x, Inches(5.5),  Inches(2.9), Inches(0.62), 26, AMB, True)
+        txt(sl, lbl, x, Inches(6.1),  Inches(2.9), Inches(0.3),  10, W3)
+
     # Right panel content
     rx = SW - Inches(4.0)
     txt(sl, "Built with", rx, Inches(1.1), Inches(3.6), Inches(0.28), 9, W3)
@@ -197,6 +208,56 @@ def s01(prs):
         ty = Inches(1.5) + i * Inches(0.44)
         box(sl, rx, ty + Inches(0.1), Inches(0.06), Inches(0.2), fill=AMB)
         txt(sl, tech, rx + Inches(0.18), ty, Inches(3.4), Inches(0.36), 12, W1, True)
+
+# ── 1b · PROJECT OVERVIEW ────────────────────────────────────────────
+def s01b(prs):
+    sl = blank(prs); bg(sl)
+    box(sl, 0, 0, Inches(0.1), SH, fill=AMB)
+
+    # Top label
+    txt(sl, "What was built", LM, Inches(0.46), SW - LM - RM, Inches(0.28), 10, W3, True)
+
+    # Three-line hero statement — sized to fit single line each
+    txt(sl,
+        "An end-to-end unsupervised ML pipeline",
+        LM, Inches(0.84), SW - LM - RM, Inches(0.56), 30, W1, True)
+    txt(sl,
+        "detecting network intrusions without labeled training data",
+        LM, Inches(1.46), SW - LM - RM, Inches(0.56), 30, AMB, True)
+    txt(sl,
+        "Deployed as a browser application — anyone can run it in one click.",
+        LM, Inches(2.12), SW - LM - RM, Inches(0.38), 15, W2)
+
+    rule(sl, Inches(2.76), LM, SW - LM - RM - Inches(0.1), LINE)
+
+    # 4 key feature blocks — 2 rows x 2 cols
+    features = [
+        ("NSL-KDD Dataset",
+         "125,973 training records across 5 attack categories. "
+         "Zero missing values. Pre-split train/test sets with no data leakage."),
+        ("K-Means Clustering",
+         "Configurable k (2-20). Pre-trained k=5 model loads in one click. "
+         "Anomaly cluster auto-identified by attack density."),
+        ("6-Step Automated Pipeline",
+         "Upload -> EDA -> Preprocess -> Detect -> Evaluate -> Export. "
+         "Every step is interactive, cached, and runs in the browser."),
+        ("Production-Quality Code",
+         "44 automated unit tests across 4 pytest modules. "
+         "CSV, PDF, and SQLite export. Auto-migration on schema changes."),
+    ]
+    fw = (SW - LM - RM - Inches(0.3)) / 2
+    fh = (SH - Inches(2.96) - Inches(0.28)) / 2
+    for i, (title, desc) in enumerate(features):
+        col = i % 2
+        row = i // 2
+        fx = LM + col * (fw + Inches(0.3))
+        fy = Inches(2.96) + row * (fh + Inches(0.12))
+        box(sl, fx, fy, fw, fh, fill=SURF)
+        box(sl, fx, fy, fw, Inches(0.05), fill=AMB)
+        txt(sl, title, fx + Inches(0.2), fy + Inches(0.14),
+            fw - Inches(0.28), Inches(0.34), 13, W1, True)
+        txt(sl, desc, fx + Inches(0.2), fy + Inches(0.54),
+            fw - Inches(0.28), fh - Inches(0.64), 11, W2)
 
 # ── 2 · THE CHALLENGE ────────────────────────────────────────────────
 def s02(prs):
@@ -428,12 +489,13 @@ def s06(prs):
         "02_after_upload.png")
     pgnum(sl, 5)
 
-    callout(sl, px_to(417), py_to(248), "6-step progress indicator", "up",    Inches(0.35), Inches(2.5))
-    callout(sl, px_to(465), py_to(300), "File badge with size",       "right", Inches(0.4),  Inches(2.1))
-    callout(sl, px_to(840), py_to(385), "Automatic schema validation","right", Inches(0.4),  Inches(2.6))
-    callout(sl, px_to(415), py_to(545), "22,544 rows loaded",         "down",  Inches(0.38), Inches(1.9))
-    callout(sl, px_to(642), py_to(545), "43 columns",                 "down",  Inches(0.38), Inches(1.6))
-    callout(sl, px_to(864), py_to(545), "0 null values",              "down",  Inches(0.38), Inches(1.6))
+    callout(sl, px_to(417), py_to(248), "6-step progress indicator",  "up",    Inches(0.35), Inches(2.6))
+    callout(sl, px_to(465), py_to(300), "File badge with size",        "right", Inches(0.4),  Inches(2.1))
+    callout(sl, px_to(840), py_to(385), "Automatic schema validation", "right", Inches(0.4),  Inches(2.8))
+    # Stagger the 3 stat callouts — left / down / right to avoid overlap
+    callout(sl, px_to(415), py_to(545), "22,544 rows loaded",          "left",  Inches(0.4),  Inches(2.1))
+    callout(sl, px_to(642), py_to(545), "43 columns detected",         "down",  Inches(0.5),  Inches(2.0))
+    callout(sl, px_to(864), py_to(545), "0 null values",               "right", Inches(0.4),  Inches(1.8))
 
 # ── 7 · DEMO: EDA ────────────────────────────────────────────────────
 def s07(prs):
@@ -471,10 +533,10 @@ def s09(prs):
         "12_error_analysis.png")
     pgnum(sl, 8)
 
-    callout(sl, px_to(408),  py_to(501), "Precision 0.9964 — very pure cluster",  "down",  Inches(0.38), Inches(3.0))
-    callout(sl, px_to(636),  py_to(501), "Recall 0.1723 — missed mixed attacks",  "down",  Inches(0.38), Inches(3.1))
-    callout(sl, px_to(1136), py_to(501), "10,622 false negatives",                "up",    Inches(0.38), Inches(2.0))
-    callout(sl, px_to(490),  py_to(655), "neptune = most missed attack type",     "left",  Inches(0.4),  Inches(2.6))
+    callout(sl, px_to(408),  py_to(501), "Precision: 0.9964 - pure cluster",     "down",  Inches(0.42), Inches(2.8))
+    callout(sl, px_to(636),  py_to(501), "Recall: 0.1723 - mixed attacks missed", "down",  Inches(0.42), Inches(3.0))
+    callout(sl, px_to(1136), py_to(501), "10,622 false negatives",               "up",    Inches(0.42), Inches(2.2))
+    callout(sl, px_to(490),  py_to(655), "neptune = most missed attack",          "left",  Inches(0.4),  Inches(2.5))
 
     # WHY explanation strip at bottom over the image
     ey = SH - Inches(1.0)
@@ -765,7 +827,7 @@ def s14(prs):
 
     bignumber_bg(sl, "14")
     header(sl, "Conclusion")
-    pgnum(sl, 14, 14)
+    pgnum(sl, 15, 15)
 
     y0 = content_y(False)
 
@@ -833,9 +895,10 @@ def s14(prs):
 
 # ── Main ─────────────────────────────────────────────────────────────
 def main():
-    out = Path(__file__).parent / "PRESENTATION_pro.pptx"
+    out = Path(__file__).parent / "PRESENTATION_100.pptx"
     prs = prs_new()
     s01(prs)   # Title
+    s01b(prs)  # Project Overview
     s02(prs)   # The Challenge
     s03(prs)   # Dataset
     s04(prs)   # Architecture diagram
