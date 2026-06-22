@@ -4,3 +4,10 @@ __pycache__/
 data/raw/KDDTrain+.txt
 data/processed/
 .env
+# Office lock files
+~$*
+# Old presentation drafts
+PRESENTATION_v2.pptx
+PRESENTATION_v3.pptx
+PRESENTATION_final.pptx
+PRESENTATION.pptx

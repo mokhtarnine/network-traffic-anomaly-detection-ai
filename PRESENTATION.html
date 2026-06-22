@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network Traffic Anomaly Detection — SUPMTI 2025-2026</title>
+<link rel="stylesheet" href="https://unpkg.com/reveal.js@4.6.1/dist/reveal.css">
+<link rel="stylesheet" href="https://unpkg.com/reveal.js@4.6.1/plugin/highlight/monokai.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{--blue:#3b82f6;--blue-l:#60a5fa;--red:#ef4444;--green:#10b981;--purple:#8b5cf6;--yellow:#f59e0b;--bg:#0f172a;--bg2:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--bdr:rgba(255,255,255,.08)}
+*{box-sizing:border-box}
+.reveal{font-family:'Inter',system-ui,sans-serif;font-size:28px;color:var(--text)}
+.reveal-viewport{background:var(--bg)}
+.reveal h1,.reveal h2,.reveal h3,.reveal h4{font-family:'Inter',system-ui,sans-serif;text-transform:none;text-shadow:none;letter-spacing:-.02em;color:#f8fafc;margin:0 0 .4em}
+.reveal h1{font-size:2em;font-weight:900}
+.reveal h2{font-size:1.25em;font-weight:800}
+.reveal h3{font-size:.9em;font-weight:700;color:var(--muted)}
+.reveal p{font-size:.62em;color:#cbd5e1;line-height:1.6;margin:0 0 .4em}
+.reveal ul{list-style:none;padding:0;margin:0}
+.reveal li{font-size:.62em;color:#cbd5e1;line-height:1.6;padding-left:1.1em;position:relative}
+.reveal li::before{content:"▸";color:var(--blue);position:absolute;left:0;font-weight:700}
+.reveal .slides>section{text-align:left;padding:0;height:100%}
+.reveal .progress{color:var(--blue)}
+.reveal .controls{color:var(--blue)}
+.reveal .slide-number{background:rgba(255,255,255,.06);color:#475569;font-size:11px;border-radius:6px;padding:3px 8px}
+/* Layout */
+.s{padding:36px 48px;height:100%;display:flex;flex-direction:column}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem}
+/* Slide header */
+.sh{display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem;border-bottom:1px solid var(--bdr);padding-bottom:.6rem}
+.shi{width:1.7em;height:1.7em;border-radius:8px;background:rgba(59,130,246,.15);display:flex;align-items:center;justify-content:center;font-size:.7em;flex-shrink:0}
+.sh h2{margin:0;font-size:1.05em}
+.shn{font-size:.45em;color:#475569;font-weight:700;margin-left:auto;font-variant-numeric:tabular-nums}
+/* Cards */
+.card{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:12px;padding:.9rem 1rem}
+.cb{border-color:rgba(59,130,246,.25);background:rgba(59,130,246,.06)}
+.cr{border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.06)}
+.cg{border-color:rgba(16,185,129,.25);background:rgba(16,185,129,.06)}
+.cp{border-color:rgba(139,92,246,.25);background:rgba(139,92,246,.06)}
+.cy{border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
+/* Metric cards */
+.mc{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:12px;padding:1rem .7rem;text-align:center}
+.mv{font-size:1.9em;font-weight:900;line-height:1;display:block;margin-bottom:.2em}
+.mv.b{background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mv.g{background:linear-gradient(135deg,#10b981,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mv.r{background:linear-gradient(135deg,#ef4444,#f97316);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mv.p{background:linear-gradient(135deg,#8b5cf6,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.mv.y{background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.ml{font-size:.42em;color:#475569;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.ms{font-size:.38em;color:#64748b;margin-top:.25em}
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font-size:.43em;font-weight:700;letter-spacing:.04em}
+.pb{background:rgba(59,130,246,.15);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+.pr{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.pg{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+.pp{background:rgba(139,92,246,.15);color:#c4b5fd;border:1px solid rgba(139,92,246,.3)}
+.py{background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+/* Step items */
+.step{display:flex;align-items:flex-start;gap:.65rem;background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:10px;padding:.65rem .85rem}
+.stn{width:1.65em;height:1.65em;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:.58em;font-weight:800;color:#fff;flex-shrink:0}
+.stt{font-size:.6em;font-weight:700;color:#e2e8f0}
+.sts{font-size:.5em;color:#64748b;margin-top:.1em}
+/* Table */
+.reveal table{width:100%;border-collapse:collapse;font-size:.56em;margin:0}
+.reveal table th{padding:.55em .85em;background:rgba(59,130,246,.15);color:#93c5fd;font-weight:700;text-align:left;border-bottom:1px solid rgba(59,130,246,.2)}
+.reveal table td{padding:.5em .85em;border-bottom:1px solid rgba(255,255,255,.05);color:#cbd5e1}
+.reveal table tr.w td{background:rgba(16,185,129,.09);color:#6ee7b7;font-weight:700}
+/* Code */
+.reveal pre{width:100%;box-shadow:none;border-radius:10px;margin:.4em 0;font-size:.5em}
+.reveal code{font-family:'JetBrains Mono','Fira Code',monospace}
+/* Tech grid */
+.tech{background:rgba(255,255,255,.03);border:1px solid var(--bdr);border-radius:10px;padding:.6rem .4rem;text-align:center;font-size:.48em;color:#94a3b8;font-weight:600}
+.tech em{display:block;font-size:1.6em;font-style:normal;margin-bottom:.2em}
+/* Gradient text */
+.gt{background:linear-gradient(135deg,#60a5fa,#a78bfa 50%,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+/* Divider */
+.dv{height:1px;background:linear-gradient(to right,transparent,rgba(59,130,246,.3),transparent);margin:.5em 0}
+/* Canvas for hero */
+#ntv-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+.reveal .slides{position:relative;z-index:1}
+</style>
+</head>
+<body>
+
+<canvas id="ntv-canvas"></canvas>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- ═══ SLIDE 1 · TITLE ═══════════════════════════════════════════ -->
+<section data-transition="zoom" data-background-color="#0f172a">
+<div class="s" style="justify-content:center;gap:1.1rem">
+  <div>
+    <span class="pill pb">🎓 SUPMTI Rabat · AI Capstone 2025–2026</span>
+    &nbsp;<span class="pill pp">📡 Topic 15</span>
+  </div>
+  <h1 class="gt" style="font-size:2.6em;line-height:1.05;margin:0">
+    Network Traffic<br>Anomaly Detection
+  </h1>
+  <p style="font-size:.78em;color:#475569;margin:0">
+    Unsupervised K-Means Clustering on the NSL-KDD Dataset
+  </p>
+  <div class="dv"></div>
+  <div style="display:flex;gap:2.5rem;margin-top:.4rem">
+    <div>
+      <p style="color:#475569;font-size:.46em;margin:0;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Author</p>
+      <p style="color:#e2e8f0;font-weight:700;font-size:.68em;margin:0">Said Louham</p>
+    </div>
+    <div>
+      <p style="color:#475569;font-size:.46em;margin:0;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Supervisor</p>
+      <p style="color:#e2e8f0;font-weight:700;font-size:.68em;margin:0">Pr. Soufiane HAMIDA</p>
+    </div>
+    <div>
+      <p style="color:#475569;font-size:.46em;margin:0;font-weight:700;text-transform:uppercase;letter-spacing:.06em">Year</p>
+      <p style="color:#e2e8f0;font-weight:700;font-size:.68em;margin:0">2025 – 2026</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 2 · AGENDA ══════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">📋</div><h2>Agenda</h2></div>
+  <div class="g2" style="flex:1;align-items:start;gap:.55rem">
+    <div style="display:flex;flex-direction:column;gap:.45rem">
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#93c5fd">01</b>&nbsp;<span style="font-size:.58em">Problem Statement</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#93c5fd">02</b>&nbsp;<span style="font-size:.58em">NSL-KDD Dataset</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#93c5fd">03</b>&nbsp;<span style="font-size:.58em">Full 6-Step Pipeline</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#93c5fd">04</b>&nbsp;<span style="font-size:.58em">EDA &amp; Preprocessing</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#93c5fd">05</b>&nbsp;<span style="font-size:.58em">K-Means Algorithm</span></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.45rem">
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#c4b5fd">06</b>&nbsp;<span style="font-size:.58em">Model Selection &amp; Results</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#c4b5fd">07</b>&nbsp;<span style="font-size:.58em">Streamlit Application</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#c4b5fd">08</b>&nbsp;<span style="font-size:.58em">Export &amp; History</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#c4b5fd">09</b>&nbsp;<span style="font-size:.58em">Testing &amp; Tech Stack</span></div>
+      <div class="card fragment fade-up"><b style="font-size:.58em;color:#c4b5fd">10</b>&nbsp;<span style="font-size:.58em">Conclusion</span></div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 3 · PROBLEM ════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">⚠️</div><h2>The Problem</h2><span class="shn">01 / 10</span></div>
+  <div class="g3" style="flex:1;align-items:center">
+    <div class="card cr fragment fade-up">
+      <div style="font-size:1.9em;margin-bottom:.4em">📈</div>
+      <div style="font-size:.62em;font-weight:800;color:#fca5a5;margin-bottom:.35em">Scale</div>
+      <p style="font-size:.57em;margin:0">Networks generate <strong>thousands of connections per second</strong> — manual inspection is impossible at this rate.</p>
+    </div>
+    <div class="card cy fragment fade-up">
+      <div style="font-size:1.9em;margin-bottom:.4em">🎭</div>
+      <div style="font-size:.62em;font-weight:800;color:#fcd34d;margin-bottom:.35em">Variety</div>
+      <p style="font-size:.57em;margin:0">Attacks differ widely — <strong>DoS, Probe, R2L, U2R</strong> all produce distinct traffic signatures.</p>
+    </div>
+    <div class="card cb fragment fade-up">
+      <div style="font-size:1.9em;margin-bottom:.4em">🏷️</div>
+      <div style="font-size:.62em;font-weight:800;color:#93c5fd;margin-bottom:.35em">No Labels</div>
+      <p style="font-size:.57em;margin:0">Real-world traffic arrives <strong>without pre-labeled attacks</strong> — supervised learning cannot be applied.</p>
+    </div>
+  </div>
+  <div class="card cg fragment fade-up" style="margin-top:.8rem">
+    <div style="display:flex;align-items:center;gap:.8rem">
+      <span style="font-size:1.4em">💡</span>
+      <p style="font-size:.6em;margin:0;color:#6ee7b7"><strong>Our approach:</strong> Use <strong>unsupervised K-Means clustering</strong> to discover behavioral groups in traffic data — no labels required at training time.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 4 · DATASET ════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🗄️</div><h2>NSL-KDD Dataset</h2><span class="shn">02 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.1rem;align-items:start">
+    <div>
+      <div class="g2" style="gap:.55rem;margin-bottom:.75rem">
+        <div class="mc fragment zoom-in">
+          <span class="mv b">125K</span>
+          <div class="ml">Training rows</div>
+          <div class="ms">KDDTrain+.txt</div>
+        </div>
+        <div class="mc fragment zoom-in">
+          <span class="mv g">22.5K</span>
+          <div class="ml">Test rows</div>
+          <div class="ms">KDDTest+.txt</div>
+        </div>
+        <div class="mc fragment zoom-in">
+          <span class="mv p">41</span>
+          <div class="ml">Features</div>
+          <div class="ms">per connection</div>
+        </div>
+        <div class="mc fragment zoom-in">
+          <span class="mv r">23</span>
+          <div class="ml">Attack classes</div>
+          <div class="ms">in training set</div>
+        </div>
+      </div>
+      <div class="card cg fragment fade-up">
+        <p style="font-size:.55em;color:#6ee7b7;font-weight:700;margin:0 0 .2em">✓ Zero missing values in both files</p>
+        <p style="font-size:.55em;color:#6ee7b7;font-weight:700;margin:0">✓ Pre-split train / test sets (no data leakage)</p>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.65rem">
+      <div class="fragment fade-up">
+        <p style="font-size:.5em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4em">Categorical features</p>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+          <span class="pill pb">protocol_type</span>
+          <span class="pill pb">service</span>
+          <span class="pill pb">flag</span>
+        </div>
+      </div>
+      <div class="fragment fade-up">
+        <p style="font-size:.5em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4em">Attack categories</p>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+          <span class="pill pr">DoS</span>
+          <span class="pill py">Probe</span>
+          <span class="pill pp">R2L</span>
+          <span class="pill pg">U2R</span>
+          <span class="pill" style="background:rgba(255,255,255,.05);color:#94a3b8;border:1px solid rgba(255,255,255,.1)">Normal</span>
+        </div>
+      </div>
+      <div class="fragment fade-up">
+        <p style="font-size:.5em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4em">Notable numeric features</p>
+        <p style="font-size:.5em;color:#64748b;margin:0;line-height:1.8">
+          <code>duration</code> · <code>src_bytes</code> · <code>dst_bytes</code><br>
+          <code>num_failed_logins</code> · <code>logged_in</code> · <code>count</code> · <code>srv_count</code>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 5 · PIPELINE ═══════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">⚙️</div><h2>The Full Pipeline — 6 Steps</h2><span class="shn">03 / 10</span></div>
+  <div class="g2" style="flex:1;gap:.65rem;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <div class="step fragment fade-right">
+        <div class="stn">1</div>
+        <div>
+          <div class="stt">📂 Upload &amp; Validate</div>
+          <div class="sts">CSV · Excel · NSL-KDD .txt — schema check, null count, row preview</div>
+        </div>
+      </div>
+      <div class="step fragment fade-right">
+        <div class="stn">2</div>
+        <div>
+          <div class="stt">🔍 Exploratory Data Analysis</div>
+          <div class="sts">Labels · Categoricals · Numerics · Correlation heatmap</div>
+        </div>
+      </div>
+      <div class="step fragment fade-right">
+        <div class="stn">3</div>
+        <div>
+          <div class="stt">🔧 Preprocessing</div>
+          <div class="sts">OneHotEncoder + StandardScaler → 43 columns → 122 features</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#ef4444,#f97316)">4</div>
+        <div>
+          <div class="stt">🤖 K-Means Detection</div>
+          <div class="sts">k slider 2–20 · pre-trained k=5 · auto anomaly cluster identification</div>
+        </div>
+      </div>
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#ef4444,#f97316)">5</div>
+        <div>
+          <div class="stt">📊 Results &amp; Evaluation</div>
+          <div class="sts">Silhouette · DB Index · ARI · Precision · Recall · F1 · PCA 2D</div>
+        </div>
+      </div>
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#10b981,#06b6d4)">6</div>
+        <div>
+          <div class="stt">📤 Export &amp; History</div>
+          <div class="sts">CSV download · PDF report · SQLite analysis history</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 6 · EDA ════════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">📊</div><h2>Exploratory Data Analysis</h2><span class="shn">04 / 10</span></div>
+  <div class="g2" style="flex:1;gap:.8rem;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div class="card cb fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#93c5fd;margin:0 0 .35em">📌 Labels Tab</p>
+        <ul>
+          <li>Traffic label bar chart — top 15 labels</li>
+          <li>Normal vs Attack donut chart</li>
+          <li>Top 15 attack types horizontal bar</li>
+        </ul>
+      </div>
+      <div class="card cp fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#c4b5fd;margin:0 0 .35em">🏷️ Categoricals Tab</p>
+        <ul>
+          <li>protocol_type · service · flag</li>
+          <li>Top 10 values per feature, side-by-side bars</li>
+        </ul>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div class="card cg fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#6ee7b7;margin:0 0 .35em">📉 Numerics Tab</p>
+        <ul>
+          <li>Histogram grid — up to 20 numeric features</li>
+          <li>4 charts per row · reveals skewed distributions</li>
+        </ul>
+      </div>
+      <div class="card cy fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#fcd34d;margin:0 0 .35em">🔥 Correlation Tab</p>
+        <ul>
+          <li>Heatmap — top 20 highest-variance features</li>
+          <li>RdBu_r scale from −1 to +1</li>
+          <li>Reveals correlated feature groups</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="card fragment fade-up" style="margin-top:.65rem">
+    <p style="font-size:.55em;margin:0;color:#94a3b8">
+      <strong style="color:#f1f5f9">Key findings:</strong> No missing values ·
+      <span class="pill pr" style="font-size:.88em">~45% attacks</span>&nbsp;
+      <span class="pill pg" style="font-size:.88em">~55% normal</span> in training ·
+      23 distinct attack classes · Training shape <code>(125973, 43)</code>
+    </p>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 7 · PREPROCESSING ═════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🔧</div><h2>Preprocessing Pipeline</h2><span class="shn">04 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.1rem;align-items:center">
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div class="card cy fragment fade-right">
+        <p style="font-size:.55em;font-weight:800;color:#fcd34d;margin:0 0 .3em">① Drop label columns</p>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3em">
+          <span class="pill pr" style="font-size:.85em">label</span>
+          <span class="pill pr" style="font-size:.85em">binary_label</span>
+          <span class="pill pr" style="font-size:.85em">difficulty</span>
+        </div>
+        <p style="font-size:.5em;margin:0;color:#64748b">Saved separately — used only after clustering for evaluation</p>
+      </div>
+      <div class="card cb fragment fade-right">
+        <p style="font-size:.55em;font-weight:800;color:#93c5fd;margin:0 0 .3em">② OneHotEncoder</p>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.3em">
+          <span class="pill pb" style="font-size:.85em">protocol_type</span>
+          <span class="pill pb" style="font-size:.85em">service</span>
+          <span class="pill pb" style="font-size:.85em">flag</span>
+        </div>
+        <p style="font-size:.5em;margin:0;color:#64748b"><code>handle_unknown="ignore"</code> — safe for unseen test categories</p>
+      </div>
+      <div class="card cg fragment fade-right">
+        <p style="font-size:.55em;font-weight:800;color:#6ee7b7;margin:0 0 .3em">③ StandardScaler</p>
+        <p style="font-size:.5em;margin:0;color:#64748b">All 38 numeric features → mean = 0, std = 1</p>
+        <p style="font-size:.5em;margin:.25em 0 0;color:#64748b">Prevents large-magnitude features from dominating clusters</p>
+      </div>
+    </div>
+    <div class="fragment fade-left">
+      <p style="font-size:.48em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .6em">Feature matrix transformation</p>
+      <div class="mc" style="margin-bottom:.55rem">
+        <span class="mv r" style="font-size:1.5em">43</span>
+        <div class="ml">Raw columns</div>
+        <div class="ms">including labels &amp; difficulty</div>
+      </div>
+      <div style="text-align:center;font-size:1.4em;color:#334155;margin:.2em 0">↓&nbsp;<span style="font-size:.5em;color:#64748b">ColumnTransformer</span></div>
+      <div class="mc" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.07)">
+        <span class="mv g" style="font-size:1.5em">122</span>
+        <div class="ml">Processed features</div>
+        <div class="ms">ready for K-Means</div>
+      </div>
+      <div class="card cg fragment fade-up" style="margin-top:.6rem">
+        <p style="font-size:.5em;margin:0;color:#6ee7b7">
+          Train: <strong>125,973 × 122</strong><br>
+          Test:&nbsp;&nbsp;<strong>22,544 × 122</strong>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 8 · K-MEANS ════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🤖</div><h2>K-Means Clustering</h2><span class="shn">05 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1rem;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div class="card cb fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#93c5fd;margin:0 0 .4em">Configuration</p>
+        <pre><code class="language-python">KMeans(
+    n_clusters = k,      # 2 – 20 via slider
+    random_state = 42,   # reproducible
+    n_init = 10          # 10 starts → best
+)</code></pre>
+      </div>
+      <div class="card fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#e2e8f0;margin:0 0 .4em">How it works</p>
+        <ul>
+          <li>Randomly initialise k centroids</li>
+          <li>Assign each connection to its nearest centroid</li>
+          <li>Recompute centroids as cluster means</li>
+          <li>Repeat until inertia stops decreasing</li>
+        </ul>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <div class="card cr fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#fca5a5;margin:0 0 .4em">🎯 Anomaly Detection Logic</p>
+        <ul style="margin-bottom:.4em">
+          <li>After clustering, compare cluster contents with true labels</li>
+          <li>Compute <strong>attack ratio</strong> per cluster</li>
+          <li>Cluster with <strong>highest ratio</strong> → anomaly cluster</li>
+          <li>All its records flagged as <code>is_anomaly = True</code></li>
+        </ul>
+        <pre><code class="language-python">ratio  = attacks / total  # per cluster
+anom   = argmax(ratio)    # auto-identified</code></pre>
+      </div>
+      <div class="card cg fragment fade-up">
+        <p style="font-size:.58em;font-weight:800;color:#6ee7b7;margin:0 0 .35em">⚡ Two Modes in the App</p>
+        <p style="font-size:.55em;margin:0;color:#94a3b8"><strong style="color:#e2e8f0">Train new</strong> — fits on uploaded data with chosen k</p>
+        <p style="font-size:.55em;margin:.3em 0 0;color:#94a3b8"><strong style="color:#e2e8f0">Pre-trained</strong> — loads saved k = 5 model instantly</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 9 · MODEL SELECTION ═══════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🏆</div><h2>Model Selection</h2><span class="shn">06 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.3rem;align-items:center">
+    <div>
+      <p style="font-size:.54em;color:#64748b;margin-bottom:.7em">Three values of k were tested on internal clustering quality metrics:</p>
+      <table class="fragment fade-up">
+        <thead>
+          <tr><th>k</th><th>Silhouette Score ↑</th><th>Davies-Bouldin ↓</th></tr>
+        </thead>
+        <tbody>
+          <tr class="fragment fade-up"><td>3</td><td>0.4203</td><td>1.0628</td></tr>
+          <tr class="fragment fade-up"><td>4</td><td>0.4254</td><td>0.9609</td></tr>
+          <tr class="w fragment fade-up"><td>★ 5</td><td>0.4404</td><td>0.8884</td></tr>
+        </tbody>
+      </table>
+      <div class="card cg fragment fade-up" style="margin-top:.75rem">
+        <p style="font-size:.54em;color:#6ee7b7;margin:0"><strong>k = 5 selected</strong> — highest Silhouette Score AND lowest Davies-Bouldin Index simultaneously</p>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:.48em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .55em">Why k = 5 aligns with the data</p>
+      <div style="display:flex;flex-direction:column;gap:.42rem">
+        <div class="step fragment fade-left">
+          <div class="stn" style="background:rgba(255,255,255,.12);font-size:.52em">N</div>
+          <div><div class="stt">Normal traffic</div></div>
+        </div>
+        <div class="step fragment fade-left">
+          <div class="stn" style="background:rgba(239,68,68,.35);font-size:.52em">D</div>
+          <div><div class="stt">DoS attacks</div><div class="sts">neptune, smurf, back, pod…</div></div>
+        </div>
+        <div class="step fragment fade-left">
+          <div class="stn" style="background:rgba(245,158,11,.35);font-size:.52em">P</div>
+          <div><div class="stt">Probe attacks</div><div class="sts">ipsweep, nmap, portsweep…</div></div>
+        </div>
+        <div class="step fragment fade-left">
+          <div class="stn" style="background:rgba(139,92,246,.35);font-size:.52em">R</div>
+          <div><div class="stt">R2L attacks</div><div class="sts">warezclient, imap, spy…</div></div>
+        </div>
+        <div class="step fragment fade-left">
+          <div class="stn" style="background:rgba(16,185,129,.35);font-size:.52em">U</div>
+          <div><div class="stt">U2R attacks</div><div class="sts">buffer_overflow, rootkit…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 10 · METRICS ═══════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">📈</div><h2>Evaluation Metrics</h2><span class="shn">07 / 10</span></div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:.8rem">
+    <div class="g2" style="gap:.8rem">
+      <div>
+        <p style="font-size:.48em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .5em">Internal — no labels needed</p>
+        <div class="g2" style="gap:.55rem">
+          <div class="mc fragment zoom-in">
+            <span class="mv b">0.4404</span>
+            <div class="ml">Silhouette Score</div>
+            <div class="ms">Higher is better · max 1.0</div>
+          </div>
+          <div class="mc fragment zoom-in">
+            <span class="mv g">0.8884</span>
+            <div class="ml">Davies-Bouldin</div>
+            <div class="ms">Lower is better · min 0.0</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:.48em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .5em">Label-based — post-clustering</p>
+        <div class="g2" style="gap:.55rem">
+          <div class="mc fragment zoom-in">
+            <span class="mv p">ARI</span>
+            <div class="ml">Adj. Rand Index</div>
+            <div class="ms">Cluster ↔ label agreement</div>
+          </div>
+          <div class="mc fragment zoom-in">
+            <span class="mv y">F1</span>
+            <div class="ml">F1 Score</div>
+            <div class="ms">Precision × Recall balance</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="g3" style="gap:.6rem">
+      <div class="card cb fragment fade-up">
+        <p style="font-size:.55em;color:#93c5fd;font-weight:800;margin:0 0 .25em">Silhouette</p>
+        <p style="font-size:.52em;margin:0;color:#64748b">How well each record fits its own cluster vs its nearest neighbour cluster</p>
+      </div>
+      <div class="card cg fragment fade-up">
+        <p style="font-size:.55em;color:#6ee7b7;font-weight:800;margin:0 0 .25em">Davies-Bouldin</p>
+        <p style="font-size:.52em;margin:0;color:#64748b">Average similarity between each cluster and its most similar cluster — lower means more distinct</p>
+      </div>
+      <div class="card cp fragment fade-up">
+        <p style="font-size:.55em;color:#c4b5fd;font-weight:800;margin:0 0 .25em">Error Analysis</p>
+        <p style="font-size:.52em;margin:0;color:#64748b">Precision · Recall · F1 · False negatives broken down by attack type</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 11 · APP ═══════════════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🖥️</div><h2>Streamlit Application</h2><span class="shn">08 / 10</span></div>
+  <div class="g2" style="flex:1;gap:.65rem;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:.45rem">
+      <div class="step fragment fade-right">
+        <div class="stn">1</div>
+        <div><div class="stt">📂 Upload &amp; Validate</div><div class="sts">Rows · nulls · duplicates displayed instantly as metric cards</div></div>
+      </div>
+      <div class="step fragment fade-right">
+        <div class="stn">2</div>
+        <div><div class="stt">🔍 EDA — 4 Plotly tabs</div><div class="sts">Labels · Categoricals · Numerics · Correlation · all cached</div></div>
+      </div>
+      <div class="step fragment fade-right">
+        <div class="stn">3</div>
+        <div><div class="stt">🔧 Preprocess</div><div class="sts">Fit new pipeline or load pre-trained preprocessor</div></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.45rem">
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#ef4444,#f97316)">4</div>
+        <div><div class="stt">🤖 Run Detection</div><div class="sts">k slider 2–20 · pre-trained checkbox · auto anomaly cluster</div></div>
+      </div>
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#ef4444,#f97316)">5</div>
+        <div><div class="stt">📊 Results Dashboard</div><div class="sts">Cluster bar · PCA 2D scatter · error analysis · cross-tables</div></div>
+      </div>
+      <div class="step fragment fade-left">
+        <div class="stn" style="background:linear-gradient(135deg,#10b981,#06b6d4)">6</div>
+        <div><div class="stt">📤 Export &amp; Save</div><div class="sts">⬇ CSV · ⬇ PDF report · 💾 SQLite history</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="g3" style="gap:.55rem;margin-top:.65rem">
+    <div class="card cb fragment zoom-in">
+      <p style="font-size:.54em;color:#93c5fd;font-weight:700;margin:0 0 .2em">🎨 Custom CSS Theme</p>
+      <p style="font-size:.49em;margin:0;color:#64748b">Hover cards · gradient buttons · pill tabs · file-drop zone</p>
+    </div>
+    <div class="card cp fragment zoom-in">
+      <p style="font-size:.54em;color:#c4b5fd;font-weight:700;margin:0 0 .2em">📍 Step Progress Bar</p>
+      <p style="font-size:.49em;margin:0;color:#64748b">Live badges ○ pending · ▶ active · ✓ done</p>
+    </div>
+    <div class="card cg fragment zoom-in">
+      <p style="font-size:.54em;color:#6ee7b7;font-weight:700;margin:0 0 .2em">⚡ Streamlit Cache</p>
+      <p style="font-size:.49em;margin:0;color:#64748b">EDA charts + PCA computation memoised per dataset</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 12 · EXPORT & HISTORY ═════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">📤</div><h2>Export &amp; Analysis History</h2><span class="shn">08 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.2rem;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:.65rem">
+      <p style="font-size:.52em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0">Export Formats</p>
+      <div class="card cb fragment fade-up">
+        <p style="font-size:.58em;color:#93c5fd;font-weight:800;margin:0 0 .3em">⬇ CSV Download</p>
+        <p style="font-size:.53em;margin:0;color:#94a3b8">Original rows + <code>cluster</code> column + <code>is_anomaly</code> flag appended</p>
+      </div>
+      <div class="card cp fragment fade-up">
+        <p style="font-size:.58em;color:#c4b5fd;font-weight:800;margin:0 0 .3em">⬇ PDF Report (fpdf2)</p>
+        <ul style="font-size:.52em">
+          <li>File name · Algorithm · Record count</li>
+          <li>Anomaly count + rate</li>
+          <li>Silhouette · Davies-Bouldin · ARI</li>
+          <li>Model parameters</li>
+        </ul>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.65rem">
+      <p style="font-size:.52em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0">SQLite History Database</p>
+      <div class="card cg fragment fade-up">
+        <p style="font-size:.58em;color:#6ee7b7;font-weight:800;margin:0 0 .35em">💾 Saved per analysis run</p>
+        <ul style="font-size:.52em">
+          <li>Timestamp · filename · algorithm</li>
+          <li>Record count · anomaly count · ratio</li>
+          <li>Silhouette · DB Index · ARI</li>
+          <li>Parameters as JSON</li>
+        </ul>
+      </div>
+      <div class="card cy fragment fade-up">
+        <p style="font-size:.58em;color:#fcd34d;font-weight:800;margin:0 0 .3em">🔄 Auto-migration</p>
+        <p style="font-size:.52em;margin:0;color:#94a3b8">Schema upgrades gracefully when new columns are added — no manual migration needed</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 13 · TESTING + TECH ═══════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🧪</div><h2>Testing &amp; Tech Stack</h2><span class="shn">09 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.2rem;align-items:start">
+    <div>
+      <div class="mc fragment zoom-in" style="margin-bottom:.7rem">
+        <span class="mv b">44</span>
+        <div class="ml">Unit Tests — pytest</div>
+        <div class="ms">4 test modules, all passing</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        <div class="card cb fragment fade-up">
+          <p style="font-size:.54em;color:#93c5fd;font-weight:700;margin:0">test_loader.py</p>
+          <p style="font-size:.49em;margin:.15em 0 0;color:#64748b">File loading, column assignment, schema validation</p>
+        </div>
+        <div class="card cg fragment fade-up">
+          <p style="font-size:.54em;color:#6ee7b7;font-weight:700;margin:0">test_preprocessor.py</p>
+          <p style="font-size:.49em;margin:.15em 0 0;color:#64748b">Output shape, feature names, label separation, pkl round-trip</p>
+        </div>
+        <div class="card cp fragment fade-up">
+          <p style="font-size:.54em;color:#c4b5fd;font-weight:700;margin:0">test_models.py</p>
+          <p style="font-size:.49em;margin:.15em 0 0;color:#64748b">Train, predict, anomaly mask, pre-trained model load</p>
+        </div>
+        <div class="card cy fragment fade-up">
+          <p style="font-size:.54em;color:#fcd34d;font-weight:700;margin:0">test_metrics.py</p>
+          <p style="font-size:.49em;margin:.15em 0 0;color:#64748b">Silhouette, DB Index, ARI, Precision, Recall, F1</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:.48em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .55em">Technology Stack</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem">
+        <div class="tech fragment fade-up"><em>🐍</em>Python</div>
+        <div class="tech fragment fade-up"><em>🐼</em>pandas</div>
+        <div class="tech fragment fade-up"><em>🔢</em>NumPy</div>
+        <div class="tech fragment fade-up"><em>🤖</em>scikit-learn</div>
+        <div class="tech fragment fade-up"><em>🌊</em>Streamlit</div>
+        <div class="tech fragment fade-up"><em>📊</em>Plotly</div>
+        <div class="tech fragment fade-up"><em>💾</em>SQLite</div>
+        <div class="tech fragment fade-up"><em>📄</em>fpdf2</div>
+        <div class="tech fragment fade-up"><em>🧪</em>pytest</div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 14 · LIMITATIONS ══════════════════════════════════ -->
+<section data-background-color="#0f172a">
+<div class="s">
+  <div class="sh"><div class="shi">🔭</div><h2>Limitations &amp; Future Work</h2><span class="shn">09 / 10</span></div>
+  <div class="g2" style="flex:1;gap:1.1rem;align-items:start">
+    <div>
+      <p style="font-size:.48em;font-weight:700;color:#fca5a5;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .55em">⚠️ Current Limitations</p>
+      <div style="display:flex;flex-direction:column;gap:.45rem">
+        <div class="card cr fragment fade-up"><p style="font-size:.57em;margin:0;color:#fca5a5">K-Means requires <strong>k chosen in advance</strong> — wrong k leads to poor separation</p></div>
+        <div class="card cr fragment fade-up"><p style="font-size:.57em;margin:0;color:#fca5a5">One cluster ≠ one attack category — attacks can scatter across multiple clusters</p></div>
+        <div class="card cr fragment fade-up"><p style="font-size:.57em;margin:0;color:#fca5a5">NSL-KDD is academic — does not cover all <strong>modern attack patterns</strong></p></div>
+        <div class="card cr fragment fade-up"><p style="font-size:.57em;margin:0;color:#fca5a5">Results are sensitive to preprocessing choices and random seeds</p></div>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:.48em;font-weight:700;color:#6ee7b7;text-transform:uppercase;letter-spacing:.05em;margin:0 0 .55em">🚀 Planned Improvements</p>
+      <div style="display:flex;flex-direction:column;gap:.45rem">
+        <div class="card cg fragment fade-up"><p style="font-size:.57em;margin:0;color:#6ee7b7"><strong>Auto k selection</strong> — Elbow, Gap statistic, Silhouette scan in UI</p></div>
+        <div class="card cg fragment fade-up"><p style="font-size:.57em;margin:0;color:#6ee7b7"><strong>DBSCAN / Isolation Forest</strong> — no k required, density-based detection</p></div>
+        <div class="card cg fragment fade-up"><p style="font-size:.57em;margin:0;color:#6ee7b7"><strong>Real-time traffic</strong> — stream live PCAP data into the pipeline</p></div>
+        <div class="card cg fragment fade-up"><p style="font-size:.57em;margin:0;color:#6ee7b7"><strong>Cloud deployment</strong> — Streamlit Cloud or Docker container</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ═══ SLIDE 15 · CONCLUSION ════════════════════════════════════ -->
+<section data-transition="zoom" data-background-color="#0f172a">
+<div class="s" style="justify-content:center;gap:.9rem">
+  <div class="sh"><div class="shi">✅</div><h2>Conclusion</h2><span class="shn">10 / 10</span></div>
+  <div class="g3" style="gap:.6rem">
+    <div class="mc fragment zoom-in">
+      <span class="mv b">0.4404</span>
+      <div class="ml">Silhouette Score</div>
+      <div class="ms">k = 5 — best configuration</div>
+    </div>
+    <div class="mc fragment zoom-in">
+      <span class="mv g">0.8884</span>
+      <div class="ml">Davies-Bouldin Index</div>
+      <div class="ms">Lowest of all tested k</div>
+    </div>
+    <div class="mc fragment zoom-in">
+      <span class="mv r">44</span>
+      <div class="ml">Unit Tests Passing</div>
+      <div class="ms">pytest · 4 modules</div>
+    </div>
+  </div>
+  <div class="g2" style="gap:.65rem">
+    <div class="card cg fragment fade-up">
+      <p style="font-size:.55em;color:#6ee7b7;font-weight:700;margin:0 0 .4em">✅ Delivered</p>
+      <ul style="font-size:.52em">
+        <li>Complete ML pipeline — 6 automated steps</li>
+        <li>Interactive Streamlit application</li>
+        <li>CSV + PDF report export</li>
+        <li>SQLite analysis history with auto-migration</li>
+        <li>Pre-trained model + preprocessor artefacts</li>
+        <li>44 unit tests across 4 modules</li>
+      </ul>
+    </div>
+    <div class="card cb fragment fade-up">
+      <p style="font-size:.55em;color:#93c5fd;font-weight:700;margin:0 0 .4em">📌 Key Takeaway</p>
+      <p style="font-size:.52em;margin:0;color:#94a3b8">
+        Unsupervised clustering can reliably separate normal traffic from anomalies
+        <strong style="color:#f1f5f9">without requiring labeled training data</strong>
+        — directly applicable to real-world network monitoring where attack labels are unavailable.
+      </p>
+    </div>
+  </div>
+  <div class="card fragment fade-up" style="text-align:center;border-color:rgba(59,130,246,.2)">
+    <p style="font-size:.58em;margin:0;color:#64748b">
+      <strong style="color:#f1f5f9;font-size:1.1em">Thank you for your attention</strong>
+      &nbsp;&nbsp;<span class="pill pb" style="font-size:.95em">Questions welcome</span>
+    </p>
+  </div>
+</div>
+</section>
+
+</div><!-- /slides -->
+</div><!-- /reveal -->
+
+<script src="https://unpkg.com/reveal.js@4.6.1/dist/reveal.js"></script>
+<script src="https://unpkg.com/reveal.js@4.6.1/plugin/highlight/highlight.js"></script>
+<script src="https://unpkg.com/reveal.js@4.6.1/plugin/notes/notes.js"></script>
+<script>
+/* ── Reveal init ─────────────────────────────────────────────── */
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  transition: 'slide',
+  transitionSpeed: 'default',
+  backgroundTransition: 'fade',
+  width: 1280,
+  height: 720,
+  margin: 0.04,
+  minScale: 0.2,
+  maxScale: 2.0,
+  plugins: [RevealHighlight, RevealNotes]
+});
+
+/* ── Animated network background (canvas) ────────────────────── */
+(function () {
+  const canvas = document.getElementById('ntv-canvas');
+  const ctx    = canvas.getContext('2d');
+  let   W, H, nodes, raf;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function mkNode() {
+    return {
+      x:  Math.random() * W,
+      y:  Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r:  Math.random() * 1.8 + 0.8
+    };
+  }
+
+  function init() {
+    resize();
+    nodes = Array.from({ length: 55 }, mkNode);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const LINK = 160;
+
+    /* edges */
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const d  = Math.sqrt(dx * dx + dy * dy);
+        if (d < LINK) {
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.strokeStyle = `rgba(59,130,246,${0.12 * (1 - d / LINK)})`;
+          ctx.lineWidth   = 0.8;
+          ctx.stroke();
+        }
+      }
+    }
+
+    /* nodes */
+    nodes.forEach(n => {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(96,165,250,0.35)';
+      ctx.fill();
+    });
+
+    /* move */
+    nodes.forEach(n => {
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < 0 || n.x > W) n.vx *= -1;
+      if (n.y < 0 || n.y > H) n.vy *= -1;
+    });
+
+    raf = requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', () => { resize(); });
+  init();
+  draw();
+})();
+</script>
+</body>
+</html>
